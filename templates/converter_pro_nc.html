@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}Converter PRO em NC - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Converter PRO em Nota de Crédito{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Converter PRO: {{ pro.numero }}</h6>
+                <span class="badge bg-warning text-dark">
+                    {{ pro.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Informações da PRO -->
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-info-circle"></i> Informações da PRO</h6>
+                    <p class="mb-0"><strong>Solicitação Relacionada:</strong> {{ solicitacao.numero }}</p>
+                    <p class="mb-1"><strong>DIEx da Solicitação Original:</strong> {{ solicitacao.diex or '--' }}</p>
+                    <p class="mb-0"><strong>Órgão Demandante:</strong> {{ solicitacao.orgao_demandante or '--' }}</p>
+                </div>
+
+                {% if step != 'valores' %}
+                <form method="POST" action="{{ url_for('converter_pro_em_nc', id=pro.id) }}">
+                    <!-- NOVA SEÇÃO: Dados do DIEx para Crédito -->
+                    <div class="card border-primary mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="m-0 font-weight-bold"><i class="fas fa-file-alt"></i> Dados do DIEx para Solicitação do Crédito</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="diex_nc">Número do DIEx:</label>
+                                        <input type="text" class="form-control" id="diex_nc" name="diex_nc"
+                                               value="{{ diex_cache.get('diex_nc', solicitacao.diex or '') }}"
+                                               placeholder="Digite o número do DIEx" required>
+                                        <small class="form-text text-muted">DIEx específico para o crédito</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="data_diex_nc">Data do DIEx:</label>
+                                        <input type="date" class="form-control" id="data_diex_nc" name="data_diex_nc"
+                                               value="{{ diex_cache.get('data_diex_nc', solicitacao.data_solicitacao.strftime('%Y-%m-%d') if solicitacao.data_solicitacao else '') }}"
+                                               required>
+                                        <small class="form-text text-muted">Data do documento DIEx</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="om_diex_nc">OM Destinatária:</label>
+                                        <input type="text" class="form-control" id="om_diex_nc" name="om_diex_nc"
+                                               value="{{ diex_cache.get('om_diex_nc', solicitacao.pedidos[0].om if solicitacao.pedidos else '') }}"
+                                               placeholder="Digite a OM destinatária" required
+                                               list="oms-list">
+                                        <datalist id="oms-list">
+                                            {% for om in oms_data %}
+                                            <option value="{{ om.OM }}">
+                                            {% endfor %}
+                                        </datalist>
+                                        <small class="form-text text-muted">OM que receberá o crédito</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="descricao_nc_usuario">Descrição Adicional para NC (se necessário):</label>
+                                <textarea class="form-control" id="descricao_nc_usuario" name="descricao_nc_usuario"
+                                          rows="2" placeholder="Preencha apenas se for necessário especificar informações como Nº OPUS ou descrição específica...">{{ diex_cache.get('descricao_nc_usuario', '') }}</textarea>
+                                <small class="form-text text-muted">
+                                    Este campo é obrigatório para alguns PIs específicos (como E6SUPLJA7PA, E6SUSOLA7PA, etc.)
+                                    onde aparece "a ser digitado pelo usuário". Para outros casos, pode ser deixado em branco.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary" name="acao" value="avancar">
+                            <i class="fas fa-arrow-right"></i> Avançar para valores
+                        </button>
+                        <a href="{{ url_for('detalhes_pro', id=pro.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar para Detalhes da PRO
+                        </a>
+                    </div>
+                </form>
+                {% else %}
+                <form method="POST" action="{{ url_for('converter_pro_em_nc', id=pro.id) }}" id="formConverterPRO">
+                    <input type="hidden" id="diex_nc" name="diex_nc" value="{{ diex_cache.get('diex_nc', '') }}">
+                    <input type="hidden" id="data_diex_nc" name="data_diex_nc" value="{{ diex_cache.get('data_diex_nc', '') }}">
+                    <input type="hidden" id="om_diex_nc" name="om_diex_nc" value="{{ diex_cache.get('om_diex_nc', '') }}">
+                    <input type="hidden" id="descricao_nc_usuario" name="descricao_nc_usuario" value="{{ diex_cache.get('descricao_nc_usuario', '') }}">
+                    <input type="hidden" id="converter_tipo_hidden" name="converter_tipo" value="">
+
+                    <div class="alert alert-info mb-4">
+                        <strong>DIEx:</strong> {{ diex_cache.get('diex_nc', '--') }}
+                        &nbsp;|&nbsp; <strong>Data:</strong> {{ diex_cache.get('data_diex_nc', '--') }}
+                        &nbsp;|&nbsp; <strong>OM:</strong> {{ diex_cache.get('om_diex_nc', '--') }}
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="font-weight-bold text-primary mb-3">Valores para Conversão por ND e Finalidade</h6>
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-edit"></i> Edite os valores</h6>
+                            <p class="mb-2">Edite o valor para cada ND e finalidade. Será gerada uma NC para cada linha com valor informado.</p>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>OM</th>
+                                        <th>ND</th>
+                                        <th>Finalidade</th>
+                                        <th>PI</th>
+                                        <th width="15%">Valor para NC (R$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item_data in itens_aprovados %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" name="item_selecionado_{{ item_data.item.id }}" value="1" checked>
+                                            <span>{{ item_data.om }}</span>
+                                            <input type="text" class="form-control mt-1" name="om_nc_{{ item_data.item.id }}" value="{{ item_data.om }}" placeholder="OM">
+                                        </td>
+                                        <td>
+                                            <select class="form-control" name="nd_nc_{{ item_data.item.id }}">
+                                                {% set nds_vinculadas = [] %}
+                                                {% if item_data.item.nd %}
+                                                    {% set nds_vinculadas = [item_data.item.nd] %}
+                                                {% elif item_data.pedido and item_data.pedido.nd %}
+                                                    {% set nds_vinculadas = [item_data.pedido.nd] %}
+                                                {% endif %}
+                                                {% for nd_opcao in nds_vinculadas %}
+                                                    <option value="{{ nd_opcao }}" selected>{{ nd_opcao }}</option>
+                                                {% endfor %}
+                                                {% for nd_opcao in ND_POSSIVEIS %}
+                                                    {% if nd_opcao not in nds_vinculadas %}
+                                                        <option value="{{ nd_opcao }}">{{ nd_opcao }}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control" name="finalidade_nc_{{ item_data.item.id }}" value="{{ item_data.finalidade }}" placeholder="Finalidade">
+                                        </td>
+                                        <td>
+                                            <input type="text" class="form-control" name="pi_nc_{{ item_data.item.id }}" value="{{ item_data.pi }}" placeholder="PI">
+                                        </td>
+                                        <td>
+                                            <input type="text" inputmode="decimal" class="form-control valor-nc-input text-right" name="valor_nc_{{ item_data.item.id }}" value="{{ item_data.valor_disponivel_formatado if item_data.valor_disponivel_formatado is defined else item_data.valor_disponivel }}" data-item-id="{{ item_data.item.id }}" placeholder="0,00" required>
+                                            <small class="form-text text-muted">Valor para a NC</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="alert alert-secondary py-2">
+                        <small>
+                            <strong>Converter Totalmente:</strong> encerra a PRO para novas NCs.<br>
+                            <strong>Converter Parcialmente:</strong> mantém saldo para futuras NCs.
+                        </small>
+                    </div>
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-warning" name="converter_tipo" value="parcial" id="btnConverterParcial" title="Mantém saldo para novas NCs">
+                            <i class="fas fa-exchange-alt"></i> Converter Parcialmente
+                        </button>
+                        <button type="submit" class="btn btn-danger" name="converter_tipo" value="total" id="btnConverterTotal" title="Encerra a PRO para novas NCs">
+                            <i class="fas fa-check-circle"></i> Converter Totalmente (Encerrar PRO)
+                        </button>
+                        <a href="{{ url_for('detalhes_pro', id=pro.id) }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar para Detalhes da PRO
+                        </a>
+                        <a href="{{ url_for('gerar_pdf_pro', id=pro.id) }}" class="btn btn-danger ml-2">
+                            <i class="fas fa-file-pdf"></i> Gerar PDF da PRO
+                        </a>
+                    </div>
+
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.table th {
+    font-weight: 600;
+    font-size: 0.85em;
+}
+
+.table td {
+    font-size: 0.9em;
+    vertical-align: middle;
+}
+
+code {
+    background-color: #f8f9fa;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+.text-warning {
+    color: #856404 !important;
+    font-size: 0.8em;
+}
+
+.alert h6 {
+    margin-bottom: 0.5rem;
+}
+
+.valor-nc-input {
+    font-weight: 600;
+    text-align: right;
+}
+
+.table tfoot {
+    font-weight: 700;
+}
+
+.card-header.bg-primary {
+    background-color: #007bff !important;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Melhorias responsivas */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8em;
+    }
+    
+    .valor-nc-input {
+        font-size: 0.8em;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Função para formatar valor como moeda brasileira
+    function formatarMoeda(valor) {
+        if (!valor) return '0,00';
+        
+        // Converte para número
+        let numero = parseFloat(valor.toString().replace(/[^\d,-]/g, '').replace(',', '.'));
+        if (isNaN(numero)) numero = 0;
+        
+        // Formata como moeda brasileira
+        return numero.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    // Função para converter formato brasileiro para float
+    function moedaParaFloat(moeda) {
+        if (!moeda) return 0;
+        let texto = moeda.toString().replace(/R\$/g, '').replace(/\s/g, '');
+        if (texto.includes(',') && texto.includes('.')) {
+            // Formato pt-BR com milhar e decimal: 180.320,99
+            texto = texto.replace(/\./g, '').replace(',', '.');
+        } else if (texto.includes(',')) {
+            // Decimal com virgula: 180320,99
+            texto = texto.replace(',', '.');
+        }
+        return parseFloat(texto);
+    }
+
+    // Atualizar totais quando valores forem editados
+    function atualizarTotais() {
+        let totalOriginal = 0;
+        let totalNC = 0;
+        
+        // Calcular totais
+        document.querySelectorAll('.valor-nc-input').forEach(input => {
+            const valorFloat = moedaParaFloat(input.value);
+            totalNC += valorFloat;
+        });
+        
+        // Atualizar exibição
+        const totalNcEl = document.getElementById('total-nc');
+        if (totalNcEl) {
+            totalNcEl.textContent = 'R$ ' + formatarMoeda(totalNC);
+        }
+    }
+
+    // Formatar valores em tempo real
+    document.addEventListener('blur', function(e) {
+        if (e.target.classList.contains('valor-nc-input')) {
+            const valorFormatado = formatarMoeda(e.target.value);
+            e.target.value = valorFormatado;
+            atualizarTotais();
+        }
+    });
+
+    // Auto-complete para campo OM
+    const omInput = document.getElementById('om_diex_nc');
+    if (omInput) {
+        // Quando o usuário digitar no campo OM, preencher automaticamente se encontrar correspondência
+        omInput.addEventListener('input', function() {
+            const omsList = document.getElementById('oms-list');
+            const options = omsList ? Array.from(omsList.options) : [];
+            
+            // Verificar se o valor digitado corresponde a uma OM da lista
+            const omDigitada = this.value.trim().toLowerCase();
+            const omEncontrada = options.find(option => 
+                option.value.toLowerCase().includes(omDigitada)
+            );
+            
+            if (omEncontrada && omDigitada.length >= 3) {
+                // Sugerir a OM encontrada
+                this.value = omEncontrada.value;
+            }
+        });
+    }
+
+    // Validar formulário antes do envio
+    const formConverter = document.getElementById('formConverterPRO');
+    if (formConverter) {
+        formConverter.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const converterTipoHidden = document.getElementById('converter_tipo_hidden');
+            const submitter = e.submitter;
+            if (submitter && submitter.name === 'converter_tipo') {
+                converterTipoHidden.value = submitter.value;
+            } else if (!converterTipoHidden.value) {
+                converterTipoHidden.value = 'parcial';
+            }
+            
+            // Validar campos do DIEx
+            const diexNc = document.getElementById('diex_nc').value.trim();
+            const dataDiexNc = document.getElementById('data_diex_nc').value;
+            const omDiexNc = document.getElementById('om_diex_nc').value.trim();
+            
+            if (!diexNc) {
+                alert('Erro: É necessário informar o número do DIEx para o crédito!');
+                document.getElementById('diex_nc').focus();
+                return false;
+            }
+            
+            if (!dataDiexNc) {
+                alert('Erro: É necessário informar a data do DIEx!');
+                document.getElementById('data_diex_nc').focus();
+                return false;
+            }
+            
+            if (!omDiexNc) {
+                alert('Erro: É necessário informar a OM destinatária!');
+                document.getElementById('om_diex_nc').focus();
+                return false;
+            }
+            
+            // Confirmar conversão
+            if (confirm('⚠️ CONFIRMAÇÃO FINAL\n\nTem certeza que deseja converter esta PRO em Nota de Crédito?\n\n• Será gerada uma NC para cada ND\n• O status da PRO será alterado para "Convertida em NC"\n• A NC incluirá referência ao DIEx informado\n• Esta ação não pode ser desfeita')) {
+                // Mostrar loading
+                const btnConverter = document.getElementById('btnConverter');
+                if (btnConverter) {
+                    btnConverter.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Convertendo...';
+                    btnConverter.disabled = true;
+                }
+                
+                // Enviar formulário
+                this.submit();
+            }
+        });
+    }
+
+    // Inicializar totais
+    atualizarTotais();
+    
+    // Formatar data para exibição amigável
+    const dataInput = document.getElementById('data_diex_nc');
+    if (dataInput) {
+        // Se não houver data, definir como hoje
+        if (!dataInput.value) {
+            const hoje = new Date();
+            const hojeFormatado = hoje.toISOString().split('T')[0];
+            dataInput.value = hojeFormatado;
+        }
+    }
+});
+</script>
+{% endblock %}

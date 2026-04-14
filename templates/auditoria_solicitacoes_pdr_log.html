@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Auditoria de Solicitações PDR Log - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Auditoria de Solicitações PDR Log{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros da auditoria</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <label for="om" class="form-label">OM Solicitante</label>
+                            <input type="text" class="form-control" id="om" name="om" value="{{ om_filter }}" placeholder="Ex: 1o B Fv">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="pi" class="form-label">PI</label>
+                            <input type="text" class="form-control" id="pi" name="pi" value="{{ pi_filter }}" placeholder="Ex: E6SUPLJA5PA">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="nd" class="form-label">ND</label>
+                            <input type="text" class="form-control" id="nd" name="nd" value="{{ nd_filter }}" placeholder="Ex: 339030">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                            <a href="/pdr-log/auditoria-solicitacoes" class="btn btn-secondary w-100">Limpar</a>
+                        </div>
+                    </div>
+                </form>
+                <div class="mt-3 text-muted">
+                    Critério de duplicidade: <strong>OM Solicitante + PI + ND + VALOR</strong>.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4"><div class="alert alert-secondary">Total de solicitações: <strong>{{ total_solicitacoes }}</strong></div></div>
+    <div class="col-md-4"><div class="alert alert-warning">Grupos com duplicidade: <strong>{{ total_grupos_duplicados }}</strong></div></div>
+    <div class="col-md-4"><div class="alert alert-danger">Registros duplicados: <strong>{{ total_registros_duplicados }}</strong></div></div>
+</div>
+<div class="row">
+    <div class="col-md-6"><div class="alert alert-danger">Somatório dos valores dos registros duplicados: <strong>{{ total_valor_registros_duplicados|format_currency }}</strong></div></div>
+    <div class="col-md-6"><div class="alert alert-warning">Somatório excedente (descontando 1 por grupo): <strong>{{ total_valor_excedente_duplicidades|format_currency }}</strong></div></div>
+</div>
+<div class="row">
+    <div class="col-md-6"><div class="alert alert-info">Solicitações com número válido: <strong>{{ total_solicitacoes_com_numero }}</strong></div></div>
+    <div class="col-md-6"><div class="alert alert-light">Solicitações sem número (incluídas na análise): <strong>{{ total_solicitacoes_sem_numero }}</strong></div></div>
+</div>
+
+{% if duplicidades %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Duplicidades encontradas</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>OM Solicitante</th>
+                        <th>PI</th>
+                        <th>ND</th>
+                        <th>Valor</th>
+                        <th>Qtd. Registros</th>
+                        <th>Números de Solicitação</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in duplicidades %}
+                    <tr>
+                        <td>{{ item.om_solicitante or '--' }}</td>
+                        <td>{{ item.pi or '--' }}</td>
+                        <td>{{ item.nd or '--' }}</td>
+                        <td>{{ item.valor|format_currency }}</td>
+                        <td><span class="badge bg-danger">{{ item.quantidade }}</span></td>
+                        <td>
+                            {% for s in item.solicitacoes %}
+                                <span class="badge bg-secondary">{{ s.numero }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            {% for s in item.solicitacoes %}
+                                <div>{{ s.status }}</div>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card shadow mb-4">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+        <h5 class="text-muted">Nenhuma duplicidade encontrada para os filtros aplicados</h5>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

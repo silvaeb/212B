@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitações PDR Log - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Solicitações PDR Log (Planilha BD){% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 mb-3">
+        <a href="/pdr-log/auditoria-solicitacoes" class="btn btn-outline-warning">
+            <i class="fas fa-copy"></i> Auditoria de duplicidades (OM + PI + ND + Valor)
+        </a>
+    </div>
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="">Todos</option>
+                                {% for status in status_opcoes %}
+                                <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="classe" class="form-label">Classe</label>
+                            <select class="form-control" id="classe" name="classe">
+                                <option value="">Todas</option>
+                                {% for classe in classes_opcoes %}
+                                <option value="{{ classe }}" {% if classe_filter == classe %}selected{% endif %}>{{ classe }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="cod_assunto" class="form-label">Cód. Assunto</label>
+                            <select class="form-control" id="cod_assunto" name="cod_assunto">
+                                <option value="">Todos</option>
+                                {% for assunto in assuntos_opcoes %}
+                                <option value="{{ assunto }}" {% if cod_assunto_filter == assunto %}selected{% endif %}>{{ assunto }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="numero" class="form-label">Nº Solicitação</label>
+                            <input type="text" class="form-control" id="numero" name="numero" value="{{ numero_filter }}" placeholder="Ex: 67">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="om" class="form-label">OM Solicitante</label>
+                            <input type="text" class="form-control" id="om" name="om" value="{{ om_filter }}" placeholder="Ex: 1º GAAAe">
+                        </div>
+                        <div class="col-md-1 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                            <a href="{{ url_for('listar_solicitacoes_pdr_log') }}" class="btn btn-secondary w-100">Limpar</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Lista de Solicitações (aba BD)</h6>
+                <span class="badge bg-dark">{{ total_filtradas }} de {{ total_solicitacoes }} registro(s)</span>
+            </div>
+            <div class="card-body">
+                {% if solicitacoes %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nº Solicitação</th>
+                                <th>Data</th>
+                                <th>Esc. Regional</th>
+                                <th>OM Solicitante</th>
+                                <th>Classe</th>
+                                <th>Cód. Assunto</th>
+                                <th>Nome Assunto</th>
+                                <th>Finalidade/Justificativa</th>
+                                <th class="text-end">Valor Total</th>
+                                <th>NC SIAFI</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for solicitacao in solicitacoes %}
+                            <tr>
+                                <td><strong>{{ solicitacao.numero or '--' }}</strong></td>
+                                <td>{{ solicitacao.data_solicitacao or '--' }}</td>
+                                <td>{{ solicitacao.orgao_demandante or '--' }}</td>
+                                <td>{{ solicitacao.om_solicitante or '--' }}</td>
+                                <td>{{ solicitacao.classe or '--' }}</td>
+                                <td>{{ solicitacao.cod_assunto or '--' }}</td>
+                                <td>{{ solicitacao.nome_assunto or '--' }}</td>
+                                <td style="max-width: 340px;">{{ solicitacao.descricao or '--' }}</td>
+                                <td class="text-end fw-bold">{{ solicitacao.valor_total|format_currency }}</td>
+                                <td>{{ solicitacao.nc_siafi or '--' }}</td>
+                                <td>
+                                    {% set st = solicitacao.status or 'Não informado' %}
+                                    {% set detalhe = solicitacao.get('status_detalhe', '') %}
+                                    <span class="badge
+                                        {% if st and st|lower == 'nc siafi gerada' %}bg-success
+                                        {% elif st and st|lower == 'gerar nc' %}bg-warning text-dark
+                                        {% elif st and st|lower == 'atendido' %}bg-info text-dark
+                                        {% else %}bg-secondary{% endif %}">
+                                        {{ st }}
+                                        {% if detalhe %}
+                                        <div class="small">{{ detalhe }}</div>
+                                        {% endif %}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nenhum registro encontrado na aba BD</h5>
+                    <p class="text-muted">Ajuste os filtros ou valide a planilha PLANILHA PDR LOG FINAL.xlsx.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema Extra PDRLOG{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    {% set exibir_sidebar = request.endpoint != 'painel_subsistencia' %}
+    {% set modulo_menu = menu_modulo|default('extra_pdr_log') %}
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            {% if exibir_sidebar %}
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar">
+                <div class="position-sticky pt-3">
+                    <div class="text-center mb-4">
+                        <!-- Logo COLOG e Título -->
+                        <div class="d-flex align-items-center justify-content-start mb-3">
+                            <img src="{{ url_for('static', filename='img/COLOG.png') }}" 
+                                 alt="COLOG" 
+                                 class="me-2" 
+                                 style="height: 40px; width: auto;">
+                            <div class="text-start">
+                                <h4 class="mb-0">{% if modulo_menu == 'pdr_log' %}PDR Log{% else %}Extra PDRLOG{% endif %}</h4>
+                                <p class="text-muted mb-0" style="font-size: 0.8rem;">Sistema de Gestão</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- MENU DE NAVEGAÇÃO -->
+                    <ul class="nav flex-column">
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'painel_subsistencia' %}active{% endif %}" 
+           href="{{ url_for('painel_subsistencia') }}">
+            <i class="fas fa-home"></i> Painel Subsistência
+        </a>
+    </li>
+    {% if current_user.nivel_acesso in ['admin', 'usuario'] %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint in ['dashboard', 'dashboard_pdr_log'] %}active{% endif %}" 
+           href="{% if modulo_menu == 'pdr_log' %}{{ url_for('dashboard_pdr_log') }}{% else %}{{ url_for('dashboard') }}{% endif %}">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+    </li>
+    {% if modulo_menu == 'pdr_log' %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'listar_solicitacoes_pdr_log' %}active{% endif %}" 
+           href="{{ url_for('listar_solicitacoes_pdr_log') }}">
+            <i class="fas fa-list"></i> Solicitações
+        </a>
+    </li>
+    {% else %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'listar_solicitacoes' %}active{% endif %}" 
+           href="{{ url_for('listar_solicitacoes') }}">
+            <i class="fas fa-list-alt"></i> Solicitações Extra
+        </a>
+    </li>
+    {% endif %}
+    {% if modulo_menu != 'pdr_log' %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'nova_solicitacao' %}active{% endif %}" 
+           href="{{ url_for('nova_solicitacao') }}">
+            <i class="fas fa-plus-circle"></i> Nova Solicitação
+        </a>
+    </li>
+    {% endif %}
+    {% endif %}
+    
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'listar_ncs' %}active{% endif %}" 
+           href="{{ url_for('listar_ncs') }}">
+            <i class="fas fa-file-invoice-dollar"></i> Notas de Crédito
+        </a>
+    </li>
+    
+    {% if current_user.nivel_acesso in ['admin', 'usuario'] %}
+    {% if modulo_menu != 'pdr_log' %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'listar_pros' %}active{% endif %}" 
+          href="{{ url_for('listar_pros') }}">
+            <i class="fas fa-file-contract"></i> PROs
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'listar_transferencias' %}active{% endif %}"
+           href="{{ url_for('listar_transferencias') }}">
+            <i class="fas fa-exchange-alt"></i> Transferência Interna COLOG
+        </a>
+    </li>
+    {% endif %}
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint == 'relatorios' %}active{% endif %}" 
+           href="{{ url_for('relatorios') }}">
+            <i class="fas fa-chart-bar"></i> Relatórios
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if request.endpoint in ['auditoria', 'auditoria_pdr_log'] %}active{% endif %}" 
+           href="{% if modulo_menu == 'pdr_log' %}{{ url_for('auditoria_pdr_log') }}{% else %}{{ url_for('auditoria') }}{% endif %}">
+            <i class="fas fa-clipboard-check"></i> Auditoria
+        </a>
+    </li>
+    {% endif %}
+</ul>
+                    
+                    <div class="mt-4 p-3 bg-dark rounded">
+                        <h6 class="text-white">Status do Sistema</h6>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-white">Solicitações Pendentes</small>
+                            <span class="badge bg-warning text-dark" id="status-solicitacoes-pendentes">0</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-white">NCs Pendentes</small>
+                            <span class="badge bg-danger text-white" id="status-nc-abertas">0</span>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            {% endif %}
+
+            <!-- Conteúdo Principal -->
+            <main class="{% if exibir_sidebar %}col-md-9 ms-sm-auto col-lg-10{% else %}col-12{% endif %} px-md-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <span class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-user"></i> {{ current_user.nome }}
+                            </span>
+                            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger">
+                                <i class="fas fa-sign-out-alt"></i> Sair
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mensagens Flash -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Conteúdo da Página -->
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

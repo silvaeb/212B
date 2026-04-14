@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Auditoria - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Auditoria{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Execução da Auditoria (Extra PDR Log)</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row align-items-end">
+                        <div class="col-md-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Executar auditoria com base unificada
+                            </button>
+                            <select name="exportar_tabela" class="form-select" style="max-width: 320px;">
+                                <option value="">Selecione a tabela para exportar</option>
+                                <option value="resumo">Resumo</option>
+                                <option value="consolidacao_3_fontes">Consolidacao 3 Fontes</option>
+                                <option value="resultados">Resultados</option>
+                                <option value="nao_encontradas">Nao Encontradas</option>
+                                <option value="quase_matches">Quase Matches</option>
+                                <option value="duplicidades_sistema">Duplicidades Sistema</option>
+                                <option value="inc_tg_sisnc">Inconsistencias TG x SISNC</option>
+                                <option value="inc_3_fontes">Inconsistencias 3 Fontes</option>
+                            </select>
+                            <button type="submit" name="exportar_excel" value="1" class="btn btn-success">
+                                <i class="fas fa-file-excel"></i> Exportar tabela selecionada
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                <div class="mt-3 text-muted">
+                    A planilha da auditoria é carregada no Painel Subsistência e separada automaticamente por PI (SOL para Extra PDR Log).
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% if auditoria_executada %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Resumo da auditoria</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="alert alert-secondary mb-2">Correspondencias: <strong>{{ total_matches }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-success mb-2">Atualizadas: <strong>{{ total_atualizadas }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-info mb-2">Sem alteracao: <strong>{{ total_sem_alteracao }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-warning mb-2">Sem NC SIAFI: <strong>{{ total_sem_nc_siafi }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-primary mb-2">Preenchidas automaticamente: <strong>{{ total_preenchidas_auto }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-dark mb-2">Registros duplicados no sistema: <strong>{{ total_duplicidades_sistema }}</strong></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="alert alert-light mb-2">Total upload: <strong>{{ total_upload_valor|format_currency }}</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-light mb-2">Total sistema: <strong>{{ total_sistema_valor|format_currency }}</strong></div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="alert alert-light mb-2">Diferenca (upload - sistema): <strong>{{ total_diferenca|format_currency }}</strong></div>
+                    </div>
+                </div>
+                <hr>
+                <h6 class="font-weight-bold text-primary">Conciliação entre Sistema, SISNC e Tesouro Gerencial</h6>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="alert alert-secondary mb-2">Chaves sistema: <strong>{{ resumo_tres_fontes.total_sistema }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-secondary mb-2">Chaves Tesouro: <strong>{{ resumo_tres_fontes.total_tg }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-secondary mb-2">Chaves SISNC: <strong>{{ resumo_tres_fontes.total_sisnc }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-success mb-2">Sistema OK nas 3 bases: <strong>{{ resumo_tres_fontes.sistema_ok_nas_tres }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-warning mb-2">Sistema sem Tesouro: <strong>{{ resumo_tres_fontes.sistema_sem_tg }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-warning mb-2">Sistema sem SISNC: <strong>{{ resumo_tres_fontes.sistema_sem_sisnc }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-danger mb-2">Tesouro sem sistema: <strong>{{ resumo_tres_fontes.tg_sem_sistema }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-danger mb-2">SISNC sem sistema: <strong>{{ resumo_tres_fontes.sisnc_sem_sistema }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-info mb-2">Divergências TG x SISNC: <strong>{{ resumo_tres_fontes.divergencia_tg_sisnc }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-secondary mb-2">TG/SISNC chaves comuns: <strong>{{ resumo_tres_fontes.tg_sisnc_chaves_comuns }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-warning mb-2">Só no Tesouro: <strong>{{ resumo_tres_fontes.tg_sisnc_somente_tg }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-warning mb-2">Só no SISNC: <strong>{{ resumo_tres_fontes.tg_sisnc_somente_sisnc }}</strong></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="alert alert-danger mb-2">Valor divergente TG x SISNC: <strong>{{ resumo_tres_fontes.tg_sisnc_valor_divergente }}</strong></div>
+                    </div>
+                </div>
+                {% if diagnostico %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if inconsistencias_tg_sisnc %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Inconsistências entre Tesouro Gerencial e SISNC</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>COD UG</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th>Nº Referência SISNC</th>
+                                <th>NC TG</th>
+                                <th>NC SISNC</th>
+                                <th>Valor TG</th>
+                                <th>Valor SISNC</th>
+                                <th>Diferença</th>
+                                <th>Detalhe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in inconsistencias_tg_sisnc %}
+                            <tr>
+                                <td>{{ item.cod_ug or '--' }}</td>
+                                <td>{{ item.pi or '--' }}</td>
+                                <td>{{ item.nd or '--' }}</td>
+                                <td>{{ item.referencia_sisnc or '--' }}</td>
+                                <td>{{ item.nc_tg or '--' }}</td>
+                                <td>{{ item.nc_sisnc or '--' }}</td>
+                                <td>{{ item.valor_tg|format_currency if item.valor_tg is not none else '--' }}</td>
+                                <td>{{ item.valor_sisnc|format_currency if item.valor_sisnc is not none else '--' }}</td>
+                                <td>
+                                    {% if item.valor_tg is not none and item.valor_sisnc is not none %}
+                                        {{ (item.valor_tg - item.valor_sisnc)|format_currency }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>{{ item.detalhe }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">Comparativo direto entre as bases externas, independente da existência no sistema interno.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if inconsistencias_tres_fontes %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Relatório de inconsistências (Sistema x SISNC)</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Origem</th>
+                                <th>NC</th>
+                                <th>COD UG</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th>Valor</th>
+                                <th>Sistema</th>
+                                <th>SISNC</th>
+                                <th>Detalhe</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in inconsistencias_tres_fontes %}
+                            <tr>
+                                <td>{{ item.origem }}</td>
+                                <td>{{ item.numero_nc or '--' }}</td>
+                                <td>{{ item.cod_ug or '--' }}</td>
+                                <td>{{ item.pi or '--' }}</td>
+                                <td>{{ item.nd or '--' }}</td>
+                                <td>R$ {{ item.valor or '--' }}</td>
+                                <td>{{ 'Sim' if item.presente_sistema else 'Nao' }}</td>
+                                <td>{{ 'Sim' if item.presente_sisnc else 'Nao' }}</td>
+                                <td>{{ item.detalhe }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">A tabela apresenta os principais registros divergentes entre a lista de NCs do sistema e o SISNC.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if resultados %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Correspondencias encontradas</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Numero NC</th>
+                                <th>COD OM</th>
+                                <th>DIEx</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th>COD UG</th>
+                                <th>Valor</th>
+                                <th>NC SIAFI</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in resultados %}
+                            <tr>
+                                <td><strong>{{ item.numero_nc }}</strong></td>
+                                <td>{{ item.cod_om or '--' }}</td>
+                                <td>{{ item.diex or '--' }}</td>
+                                <td>{{ item.pi or '--' }}</td>
+                                <td>{{ item.nd or '--' }}</td>
+                                <td>{{ item.cod_ug or '--' }}</td>
+                                <td>R$ {{ item.valor }}</td>
+                                <td>{{ item.nc_siafi or '--' }}</td>
+                                <td>{{ item.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if nao_encontradas %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Itens do upload sem correspondencia</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>NC Upload</th>
+                                <th>COD OM</th>
+                                <th>DIEx</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th>COD UG</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in nao_encontradas %}
+                            <tr>
+                                <td>{{ item.nc_upload }}</td>
+                                <td>{{ item.cod_om or '--' }}</td>
+                                <td>{{ item.diex or '--' }}</td>
+                                <td>{{ item.pi or '--' }}</td>
+                                <td>{{ item.nd or '--' }}</td>
+                                <td>{{ item.cod_ug or '--' }}</td>
+                                <td>R$ {{ item.valor }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if quase_matches %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Quase-match (divergência em 1 campo da chave)</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Campo divergente</th>
+                                <th>Fonte upload</th>
+                                <th>NC Upload</th>
+                                <th>NC Sistema</th>
+                                <th>COD OM (upload/sistema)</th>
+                                <th>COD UG (upload/sistema)</th>
+                                <th>PI (upload/sistema)</th>
+                                <th>ND (upload/sistema)</th>
+                                <th>Valor (upload/sistema)</th>
+                                <th>DIEx nº (upload/sistema)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in quase_matches %}
+                            <tr>
+                                <td>
+                                    <span class="badge bg-danger">{{ item.campo_divergente }}</span>
+                                </td>
+                                <td>{{ item.fonte_upload or '--' }}</td>
+                                <td>{{ item.nc_upload or '--' }}</td>
+                                <td>{{ item.numero_nc_sistema or '--' }}</td>
+                                <td class="{% if item.campo_divergente == 'COD OM' %}fw-bold{% endif %}">
+                                    {% if item.campo_divergente == 'COD OM' %}
+                                        <span class="badge bg-warning text-dark">{{ item.cod_om_upload or '--' }}</span>
+                                        /
+                                        <span class="badge bg-danger">{{ item.cod_om_sistema or '--' }}</span>
+                                    {% else %}
+                                        {{ item.cod_om_upload or '--' }} / {{ item.cod_om_sistema or '--' }}
+                                    {% endif %}
+                                </td>
+                                <td class="{% if item.campo_divergente == 'COD UG' %}fw-bold{% endif %}">
+                                    {% if item.campo_divergente == 'COD UG' %}
+                                        <span class="badge bg-warning text-dark">{{ item.cod_ug_upload or '--' }}</span>
+                                        /
+                                        <span class="badge bg-danger">{{ item.cod_ug_sistema or '--' }}</span>
+                                    {% else %}
+                                        {{ item.cod_ug_upload or '--' }} / {{ item.cod_ug_sistema or '--' }}
+                                    {% endif %}
+                                </td>
+                                <td class="{% if item.campo_divergente == 'PI' %}fw-bold{% endif %}">
+                                    {% if item.campo_divergente == 'PI' %}
+                                        <span class="badge bg-warning text-dark">{{ item.pi_upload or '--' }}</span>
+                                        /
+                                        <span class="badge bg-danger">{{ item.pi_sistema or '--' }}</span>
+                                    {% else %}
+                                        {{ item.pi_upload or '--' }} / {{ item.pi_sistema or '--' }}
+                                    {% endif %}
+                                </td>
+                                <td class="{% if item.campo_divergente == 'ND' %}fw-bold{% endif %}">
+                                    {% if item.campo_divergente == 'ND' %}
+                                        <span class="badge bg-warning text-dark">{{ item.nd_upload or '--' }}</span>
+                                        /
+                                        <span class="badge bg-danger">{{ item.nd_sistema or '--' }}</span>
+                                    {% else %}
+                                        {{ item.nd_upload or '--' }} / {{ item.nd_sistema or '--' }}
+                                    {% endif %}
+                                </td>
+                                <td class="{% if item.campo_divergente == 'VALOR' %}fw-bold{% endif %}">
+                                    {% if item.campo_divergente == 'VALOR' %}
+                                        <span class="badge bg-warning text-dark">{{ item.valor_upload or '--' }}</span>
+                                        /
+                                        <span class="badge bg-danger">{{ item.valor_sistema or '--' }}</span>
+                                    {% else %}
+                                        {{ item.valor_upload or '--' }} / {{ item.valor_sistema or '--' }}
+                                    {% endif %}
+                                </td>
+                                <td class="{% if item.campo_divergente == 'DIEx' %}fw-bold{% endif %}">
+                                    {% if item.campo_divergente == 'DIEx' %}
+                                        <span class="badge bg-warning text-dark">{{ item.diex_upload or '--' }}</span>
+                                        /
+                                        <span class="badge bg-danger">{{ item.diex_sistema or '--' }}</span>
+                                    {% else %}
+                                        {{ item.diex_upload or '--' }} / {{ item.diex_sistema or '--' }}
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <small class="text-muted">Lista limitada aos principais candidatos para facilitar a depuração.</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if duplicidades_sistema %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Duplicidades no sistema</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>COD OM</th>
+                                <th>COD UG</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th>Valor</th>
+                                <th>DIEx</th>
+                                <th>NCs no sistema</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in duplicidades_sistema %}
+                            <tr>
+                                <td>{{ item.chave[0] }}</td>
+                                <td>{{ item.chave[1] }}</td>
+                                <td>{{ item.chave[2] }}</td>
+                                <td>{{ item.chave[3] }}</td>
+                                <td>{{ item.chave[4] }}</td>
+                                <td>{{ item.chave[5] }}</td>
+                                <td>
+                                    {% for nc in item.ncs %}
+                                        {{ nc.numero }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

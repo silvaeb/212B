@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da PRO - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Detalhes da Previsão de Recurso Orçamentário{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">PRO: {{ pro.numero }}</h6>
+                <span class="badge status-{{ pro.status|lower|replace(' ', '-') }}">
+                    {{ pro.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Dados Básicos -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>COD UG:</label>
+                            <input type="text" class="form-control" value="{{ pro.cod_ug or '' }}" readonly style="background-color: #f8f9fa;">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>SIGLA UG:</label>
+                            <input type="text" class="form-control" value="{{ pro.sigla_ug or '' }}" readonly style="background-color: #f8f9fa;">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label>Data de Criação:</label>
+                            <input type="text" class="form-control" 
+                                   value="{{ pro.data_criacao.strftime('%d/%m/%Y') if pro.data_criacao else '' }}" 
+                                   readonly style="background-color: #f8f9fa;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="font-weight-bold">ND, Valor OM e COD OM</h6>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>OM</th>
+                                    <th>COD OM</th>
+                                    <th>ND</th>
+                                    <th>Valor OM</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if itens_om_nd and itens_om_nd|length > 0 %}
+                                {% for item in itens_om_nd %}
+                                <tr>
+                                    <td>{{ item.om or '--' }}</td>
+                                    <td>{{ item.cod_om or '--' }}</td>
+                                    <td>{{ item.nd or '--' }}</td>
+                                    <td>{{ item.valor_om|format_currency }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted">Não há dados de ND/COD OM/Valor OM para esta PRO.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Informações da Solicitação Relacionada -->
+                {% if pro.solicitacao_pdrlog_id %}
+                <div class="alert alert-info mb-4">
+                    <h6><i class="fas fa-link"></i> Solicitação Relacionada</h6>
+                    <p class="mb-0">
+                        Esta PRO foi gerada a partir da solicitação:
+                        <a href="{{ url_for('detalhes_solicitacao', id=pro.solicitacao_pdrlog_id) }}" class="font-weight-bold">
+                            {{ pro.solicitacao_origem.numero if pro.solicitacao_origem else 'N/A' }}
+                        </a>
+                    </p>
+                </div>
+                {% endif %}
+
+                <div class="alert alert-light border mb-4">
+                    <h6><i class="fas fa-file-alt"></i> DIEx da PRO e de Créditos</h6>
+                    <p class="mb-1"><strong>DIEx da solicitação da PRO:</strong> {{ diex_solicitacao_pro or '--' }}</p>
+                    <p class="mb-1"><strong>DIEx de solicitação de crédito (NC):</strong></p>
+                    {% if diex_credito_list and diex_credito_list|length > 0 %}
+                    <ul class="mb-0">
+                        {% for diex in diex_credito_list %}
+                        <li>{{ diex }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="mb-0 text-muted">Nenhum DIEx de crédito registrado para esta PRO.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Nota de Crédito Relacionada -->
+                {% if ncs_geradas and ncs_geradas|length > 0 %}
+                <div class="alert alert-success mb-4">
+                    <h6><i class="fas fa-file-invoice-dollar"></i> Notas de Crédito Geradas</h6>
+                    <p class="mb-2">
+                        Esta PRO foi convertida nas seguintes Notas de Crédito:
+                    </p>
+                    <ul class="mb-0">
+                        {% for nc in ncs_geradas %}
+                        <li>
+                            <a href="{{ url_for('detalhes_nc', id=nc.id) }}" class="font-weight-bold">
+                                {{ nc.numero }}
+                            </a>
+                            {% if nc.status %}<span class="badge badge-info ml-2">{{ nc.status }}</span>{% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Ações para PROs Pendentes -->
+                {% if pro.status == 'Aguardando término do processo licitatório' %}
+                <div class="alert alert-warning mb-4">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Ações Disponíveis</h6>
+                    <p class="mb-2">Esta PRO está com status <strong>Aguardando término do processo licitatório</strong>. Você pode:</p>
+                    <ul class="mb-0">
+                        <li>Converter em Nota de Crédito</li>
+                        <li>Cancelar a PRO</li>
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Ações para PROs Convertidas -->
+                {% if pro.status == 'Convertida em NC' %}
+                <div class="alert alert-success mb-4">
+                    <h6><i class="fas fa-check-circle"></i> PRO Convertida</h6>
+                    <p class="mb-0">Esta PRO foi convertida em Nota de Crédito e não pode mais ser alterada.</p>
+                </div>
+                {% endif %}
+
+                <!-- Ações para PROs Vencidas -->
+                {% if pro.status == 'Vencida (mais de 120 dias)' %}
+                <div class="alert alert-danger mb-4">
+                    <h6><i class="fas fa-hourglass-end"></i> PRO Vencida</h6>
+                    <p class="mb-2">Esta PRO está vencida (mais de 120 dias sem conversão em Nota de Crédito).</p>
+                    {% if current_user and current_user.perfil == 'admin' %}
+                    <form method="POST" action="{{ url_for('prorrogar_pro', id=pro.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-warning" onclick="return confirm('Deseja prorrogar a validade desta PRO? Ela retornará ao status Aguardando término do processo licitatório.')">
+                            <i class="fas fa-redo"></i> Prorrogar PRO
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% endif %}
+                <!-- Ações para PROs Canceladas -->
+                {% if pro.status == 'Cancelada' %}
+                <div class="alert alert-danger mb-4">
+                    <h6><i class="fas fa-ban"></i> PRO Cancelada</h6>
+                    <p class="mb-0">Esta PRO foi cancelada e não pode ser convertida em Nota de Crédito.</p>
+                </div>
+                {% endif %}
+
+                <!-- Botões de Ação -->
+                <div class="form-group">
+    <div class="d-flex gap-2 flex-wrap">
+        {% if pro.status == 'Parcialmente Convertida' %}
+        <div class="alert alert-warning mb-2">
+            <strong>PRO parcialmente convertida.</strong> Saldo restante: <strong>{{ pro.valor_restante|format_currency }}</strong>
+        </div>
+        {% endif %}
+        {% if pro.status == 'Aguardando término do processo licitatório' or pro.status == 'Parcialmente Convertida' %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalConverterNC">
+            <i class="fas fa-exchange-alt"></i> Converter em Nota de Crédito
+        </button>
+        <form method="POST" action="{{ url_for('cancelar_pro', id=pro.id) }}" class="d-inline">
+            <button type="submit" class="btn btn-danger" 
+                    onclick="return confirm('Tem certeza que deseja CANCELAR esta PRO? Esta ação não pode ser desfeita.')">
+                <i class="fas fa-times-circle"></i> Cancelar PRO
+            </button>
+        </form>
+        {% endif %}
+        <a href="{{ url_for('listar_pros') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Voltar para Lista
+        </a>
+        {% if pro.status == 'Convertida em NC' and nc_relacionada %}
+        <a href="{{ url_for('detalhes_nc', id=nc_relacionada.id) }}" class="btn btn-info ml-2">
+            <i class="fas fa-file-invoice-dollar"></i> Ver Nota de Crédito
+        </a>
+        {% endif %}
+        <a href="{{ url_for('gerar_pdf_pro', id=pro.id) }}" class="btn btn-danger ml-2">
+            <i class="fas fa-file-pdf"></i> Gerar PDF da PRO
+        </a>
+        {% if current_user and current_user.perfil == 'admin' and (pro.status == 'Cancelada' or pro.status == 'Aguardando término do processo licitatório' or pro.status == 'Parcialmente Convertida' or pro.status == 'Vencida (mais de 120 dias)') %}
+        <form method="POST" action="{{ url_for('excluir_pro', id=pro.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta PRO? Esta ação é irreversível!');">
+            <button type="submit" class="btn btn-outline-danger ml-2">
+                <i class="fas fa-trash-alt"></i> Excluir PRO
+            </button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Inclui o modal de conversão em NC -->
+{% include 'modal_converter_nc.html' %}
+
+                <!-- Informações do Sistema -->
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="font-weight-bold mb-3">Informações do Sistema</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <!-- CORREÇÃO: mudar de usuario_criador para usuario -->
+                            <p><strong>Criado por:</strong> {{ pro.usuario.nome if pro.usuario else '--' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <!-- CORREÇÃO: mudar de usuario_criador para usuario -->
+                            <p><strong>Email:</strong> {{ pro.usuario.email if pro.usuario else '--' }}</p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Data de criação:</strong> {{ pro.data_criacao.strftime('%d/%m/%Y às %H:%M') if pro.data_criacao else '--' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Última atualização:</strong> {{ pro.data_atualizacao.strftime('%d/%m/%Y às %H:%M') if pro.data_atualizacao else '--' }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if pro.solicitacao_pdrlog_id %}
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p><strong>ID da Solicitação:</strong> {{ pro.solicitacao_pdrlog_id }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.status-pendente { 
+    background-color: #ffc107; 
+    color: black; 
+    font-weight: 600;
+}
+.status-convertido-em-nc { 
+    background-color: #28a745; 
+    color: white; 
+    font-weight: 600;
+}
+
+.status-cancelada { 
+    background-color: #dc3545; 
+    color: white; 
+    font-weight: 600;
+}
+.status-vencida-mais-de-120-dias {
+    background-color: #6c757d;
+    color: #fff;
+    font-weight: 600;
+}
+
+.btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.d-flex.gap-2 {
+    gap: 10px;
+}
+
+.alert ul {
+    margin-bottom: 0;
+    padding-left: 20px;
+}
+
+.alert h6 {
+    margin-bottom: 0.5rem;
+}
+
+.form-control[readonly] {
+    background-color: #f8f9fa !important;
+    cursor: not-allowed;
+}
+
+.white-space-pre-wrap {
+    white-space: pre-wrap;
+}
+
+.badge {
+    font-size: 0.8em;
+    padding: 0.5em 0.8em;
+}
+
+/* Melhorias responsivas */
+@media (max-width: 768px) {
+    .d-flex.gap-2 {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    .ml-2 {
+        margin-left: 0 !important;
+        margin-top: 5px;
+    }
+}
+</style>
+{% endblock %}
+
+{% include 'modal_converter_nc.html' %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Adicionar confirmação para ações importantes
+    const cancelarBtn = document.querySelector('form[action*="cancelar_pro"] button');
+    if (cancelarBtn) {
+        cancelarBtn.addEventListener('click', function(e) {
+            if (!confirm('⚠️ ATENÇÃO: Tem certeza que deseja CANCELAR esta PRO?\n\nEsta ação não pode ser desfeita e a PRO não poderá ser convertida em Nota de Crédito.')) {
+                e.preventDefault();
+            }
+        });
+    }
+    
+    // Adicionar tooltips se necessário
+    const tooltips = document.querySelectorAll('[title]');
+    if (tooltips.length > 0 && typeof bootstrap !== 'undefined') {
+        tooltips.forEach(function(element) {
+            new bootstrap.Tooltip(element);
+        });
+    }
+    
+    // Melhorar a exibição do texto da PRO
+    const textareaPro = document.querySelector('textarea');
+    if (textareaPro) {
+        // Garantir que o texto mantenha a formatação
+        textareaPro.style.fontFamily = 'monospace';
+        textareaPro.style.whiteSpace = 'pre-wrap';
+        textareaPro.style.lineHeight = '1.4';
+    }
+});
+</script>
+{% endblock %}

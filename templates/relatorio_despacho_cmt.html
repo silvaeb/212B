@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Despacho com o Cmt - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Relatório para Despacho com o Comandante{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitações Aguardando Despacho</h6>
+                <div>
+                    <a href="{{ url_for('relatorio_despacho_cmt_pdf') }}" class="btn btn-sm btn-secondary mr-2">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </a>
+                    <span class="badge bg-warning">
+                        {{ solicitacoes|length }} solicitações
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% for solicitacao in solicitacoes %}
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h6 class="m-0 font-weight-bold">
+                            {{ solicitacao.numero }} - {{ solicitacao.finalidade }}
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>Órgão Demandante:</strong> {{ solicitacao.orgao_demandante or '--' }}</p>
+                                <p><strong>DIEx:</strong> {{ solicitacao.diex or '--' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Data:</strong> {{ solicitacao.data_solicitacao.strftime('%d/%m/%Y') if solicitacao.data_solicitacao else '--' }}</p>
+                                <p><strong>Modalidade:</strong> {{ solicitacao.modalidade or '--' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- OMs e NDs -->
+                        <div class="mb-3">
+                            <h6>Organizações Militares e NDs:</h6>
+                            {% for pedido in solicitacao.pedidos %}
+                            <div class="mb-2">
+                                <strong>{{ pedido.om }}</strong> 
+                                {% if pedido.sigla_ug %}({{ pedido.sigla_ug }}){% endif %}
+                                <ul class="mb-1">
+                                    {% for item in pedido.itens %}
+                                    <li>
+                                        ND {{ item.nd }}: 
+                                        R$ {{ "%.2f"|format(item.valor_solicitado)|replace('.', ',') }} 
+                                        (solicitado) / 
+                                        R$ {{ "%.2f"|format(item.valor_aprovado)|replace('.', ',') }} 
+                                        (aprovado)
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Parecer -->
+                        {% if solicitacao.parecer_analise %}
+                        <div class="mb-3">
+                            <h6>Parecer da Análise:</h6>
+                            <div class="alert alert-info">
+                                {{ solicitacao.parecer_analise|nl2br|safe }}
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Descrição -->
+                        {% if solicitacao.descricao %}
+                        <div class="mb-3">
+                            <h6>Descrição:</h6>
+                            <p>{{ solicitacao.descricao|nl2br|safe }}</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="text-right">
+                            <a href="{{ url_for('detalhes_solicitacao', id=solicitacao.id) }}" 
+                               class="btn btn-sm btn-primary">
+                                <i class="fas fa-edit"></i> Editar Solicitação
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5>Nenhuma solicitação aguardando despacho</h5>
+                    <p class="text-muted">Todas as solicitações foram despachadas.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

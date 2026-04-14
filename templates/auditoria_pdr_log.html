@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Auditoria PDR Log - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Auditoria PDR Log{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Comparativo de Notas de Crédito (PDR Log)</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row align-items-end g-2">
+                        <div class="col-md-12 d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Executar auditoria com base unificada
+                            </button>
+                            <select name="exportar_tabela" class="form-select" style="max-width: 280px;">
+                                <option value="">Selecione a tabela para exportar</option>
+                                <option value="resumo">Resumo</option>
+                                <option value="correspondentes">Correspondentes</option>
+                                <option value="divergentes">Divergentes</option>
+                                <option value="somente_upload">Somente Upload</option>
+                                <option value="somente_base">Somente Base</option>
+                                <option value="quase_match_3_fontes">Quase Match 3 Fontes</option>
+                                <option value="inc_tg_sisnc">Inconsistencias TG x SISNC</option>
+                            </select>
+                            <button type="submit" name="exportar_excel" value="1" class="btn btn-success">
+                                <i class="fas fa-file-excel"></i> Exportar tabela selecionada
+                            </button>
+                            <a href="/pdr-log/auditoria-solicitacoes" class="btn btn-outline-warning">
+                                <i class="fas fa-copy"></i> Auditoria de duplicidades de solicitações
+                            </a>
+                        </div>
+                    </div>
+                </form>
+                <div class="mt-3 text-muted">
+                    A planilha da auditoria é carregada no Painel Subsistência e separada automaticamente por PI (PLJ para PDR Log).
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if auditoria_executada %}
+<div class="row">
+    <div class="col-md-2"><div class="alert alert-secondary">Base: <strong>{{ resumo.total_base }}</strong></div></div>
+    <div class="col-md-2"><div class="alert alert-info">Upload: <strong>{{ resumo.total_upload }}</strong></div></div>
+    <div class="col-md-2"><div class="alert alert-success">Correspondentes: <strong>{{ resumo.total_correspondentes }}</strong></div></div>
+    <div class="col-md-2"><div class="alert alert-warning">Divergentes: <strong>{{ resumo.total_divergentes }}</strong></div></div>
+    <div class="col-md-2"><div class="alert alert-primary">Só Upload: <strong>{{ resumo.total_somente_upload }}</strong></div></div>
+    <div class="col-md-2"><div class="alert alert-dark">Só Base: <strong>{{ resumo.total_somente_base }}</strong></div></div>
+</div>
+<div class="row">
+    <div class="col-md-4">
+        <div class="alert alert-success">NC SIAFI preenchidas automaticamente: <strong>{{ resumo.total_nc_siafi_preenchidas }}</strong></div>
+    </div>
+    <div class="col-md-4">
+        <div class="alert alert-info">Quase match (3 bases): <strong>{{ resumo.total_quase_matches_tres_fontes or 0 }}</strong></div>
+    </div>
+    <div class="col-md-4">
+        <div class="alert alert-warning">Inconsistências TG x SISNC: <strong>{{ resumo.total_inconsistencias_tg_sisnc or 0 }}</strong></div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-4">
+        <div class="alert alert-secondary">Só no Tesouro: <strong>{{ resumo.tg_sisnc_somente_tg or 0 }}</strong></div>
+    </div>
+    <div class="col-md-4">
+        <div class="alert alert-secondary">Só no SISNC: <strong>{{ resumo.tg_sisnc_somente_sisnc or 0 }}</strong></div>
+    </div>
+    <div class="col-md-4">
+        <div class="alert alert-danger">Valor divergente TG x SISNC: <strong>{{ resumo.tg_sisnc_valor_divergente or 0 }}</strong></div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-6">
+        <div class="alert alert-warning">Divergência com recolhimento: <strong>{{ resumo.tg_sisnc_valor_divergente_com_recolhimento or 0 }}</strong></div>
+    </div>
+    <div class="col-md-6">
+        <div class="alert alert-info">Divergência operacional: <strong>{{ resumo.tg_sisnc_valor_divergente_operacional or 0 }}</strong></div>
+    </div>
+</div>
+{% endif %}
+
+{% if inconsistencias_tg_sisnc %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Inconsistências entre Tesouro Gerencial e SISNC</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Doc/CODUG</th>
+                        <th>CODOM</th>
+                        <th>ND</th>
+                        <th>PI</th>
+                        <th>DIEx</th>
+                        <th>Nº Referência SISNC</th>
+                        <th>Valor TG</th>
+                        <th>Valor SISNC</th>
+                        <th>Diferença</th>
+                        <th>Classificação</th>
+                        <th>Detalhe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inconsistencias_tg_sisnc %}
+                    <tr>
+                        <td>{{ item.doc_upload or '--' }}{% if item.codug_upload and item.codug_upload != '--' %} ({{ item.codug_upload }}){% endif %}</td>
+                        <td>{{ item.codom_upload or '--' }}</td>
+                        <td>{{ item.nd or '--' }}</td>
+                        <td>{{ item.pi or '--' }}</td>
+                        <td>{{ item.diex or '--' }}</td>
+                        <td>{{ item.referencia_sisnc or '--' }}</td>
+                        <td>{{ item.valor_tg|format_currency }}</td>
+                        <td>{{ item.valor_sisnc|format_currency }}</td>
+                        <td>{{ (item.valor_tg - item.valor_sisnc)|format_currency }}</td>
+                        <td>{{ item.classificacao_divergencia or '--' }}</td>
+                        <td>{{ item.detalhe }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if quase_matches_tres_fontes %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Quase match (Sistema x SISNC x Tesouro Gerencial)</h6>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-3">Registros com 2 de 3 campos compatíveis (ND, PI e OM/CODUG), indicando divergência parcial entre as bases.</p>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Fonte upload</th>
+                        <th>Nº Solicitação (base)</th>
+                        <th>OM (base)</th>
+                        <th>ND (base)</th>
+                        <th>PI (base)</th>
+                        <th>Doc/CODUG (upload)</th>
+                        <th>ND (upload)</th>
+                        <th>PI (upload)</th>
+                        <th>Campo divergente</th>
+                        <th>Valor Base</th>
+                        <th>Valor Upload</th>
+                        <th>Diferença</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in quase_matches_tres_fontes %}
+                    <tr>
+                        <td>{{ item.fonte_upload or '--' }}</td>
+                        <td><strong>{{ item.numero_base or '--' }}</strong></td>
+                        <td>{{ item.om_base or '--' }}</td>
+                        <td>{{ item.nd_base or '--' }}</td>
+                        <td>{{ item.pi_base or '--' }}</td>
+                        <td>{{ item.doc_upload or '--' }}{% if item.codug_upload and item.codug_upload != '--' %} ({{ item.codug_upload }}){% endif %}</td>
+                        <td>{{ item.nd_upload or '--' }}</td>
+                        <td>{{ item.pi_upload or '--' }}</td>
+                        <td>{{ item.campo_divergente or '--' }}</td>
+                        <td>{{ item.valor_base|format_currency }}</td>
+                        <td>{{ item.valor_upload|format_currency }}</td>
+                        <td>{{ item.diferenca_valor|format_currency }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if divergentes %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Notas de Crédito com divergência</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>OM Solicitante</th>
+                        <th>CODOM</th>
+                        <th>CODUG</th>
+                        <th>Nº Solicitação</th>
+                        <th>Campos divergentes</th>
+                        <th>Valor Base</th>
+                        <th>Valor Upload</th>
+                        <th>Status Base</th>
+                        <th>Status Upload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in divergentes %}
+                    <tr>
+                        <td>{{ item.om_solicitante or '--' }}</td>
+                        <td>{{ item.codom or '--' }}</td>
+                        <td>{{ item.codug or '--' }}</td>
+                        <td><strong>{{ item.numero }}</strong></td>
+                        <td>{{ item.campos }}</td>
+                        <td>{{ item.valor_base|format_currency }}</td>
+                        <td>{{ item.valor_upload|format_currency }}</td>
+                        <td>{{ item.status_base or '--' }}</td>
+                        <td>{{ item.status_upload or '--' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if somente_upload %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Notas de Crédito apenas no upload</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Nº Solicitação</th>
+                        <th>Nr NC SIAFI (upload)</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in somente_upload %}
+                    <tr>
+                        <td><strong>{{ item.numero or '--' }}</strong></td>
+                        <td>{{ item.nc_siafi or '--' }}</td>
+                        <td>{{ item.valor_total|format_currency }}</td>
+                        <td>{{ item.status or '--' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if somente_base %}
+<div class="card shadow mb-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Notas de Crédito apenas na base do PDR Log</h6>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-light">
+                    <tr>
+                        <th>OM Solicitante</th>
+                        <th>CODOM</th>
+                        <th>CODUG</th>
+                        <th>Nº Solicitação</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in somente_base %}
+                    <tr>
+                        <td>{{ item.om_solicitante or '--' }}</td>
+                        <td>{{ item.codom or '--' }}</td>
+                        <td>{{ item.codug or '--' }}</td>
+                        <td><strong>{{ item.numero or '--' }}</strong></td>
+                        <td>{{ item.valor_total|format_currency }}</td>
+                        <td>{{ item.status or '--' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

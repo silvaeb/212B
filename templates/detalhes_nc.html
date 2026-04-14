@@ -1,0 +1,501 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da Nota de Crédito - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Detalhes da Nota de Crédito{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Nota de Crédito: {{ nc.numero }}</h6>
+                <span class="badge status-{{ nc.status|lower|replace(' ', '-')|replace('ã', 'a')|replace('ç', 'c') }}">
+                    {{ nc.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Se a NC está cancelada, mostrar motivo e opção de reativação -->
+                {% if nc.status == 'Cancelada' %}
+                <div class="alert alert-danger mb-4">
+                    <h6><i class="fas fa-ban"></i> Nota de Crédito Cancelada</h6>
+                    {% if nc.motivo_cancelamento %}
+                    <p class="mb-2"><strong>Motivo do cancelamento:</strong> {{ nc.motivo_cancelamento }}</p>
+                    {% endif %}
+                    <p class="mb-0">
+                        Esta Nota de Crédito foi cancelada em {{ nc.data_atualizacao.strftime('%d/%m/%Y às %H:%M') if nc.data_atualizacao else '' }}.
+                    </p>
+                </div>
+                
+                <!-- Formulário para reativação -->
+                <div class="card border-warning mb-4">
+                    <div class="card-header bg-warning text-dark">
+                        <h6 class="m-0 font-weight-bold"><i class="fas fa-undo"></i> Reativar Nota de Crédito</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('reativar_nc', id=nc.id) }}">
+                            <div class="form-group">
+                                <label for="status_reativacao">Novo status após reativação:</label>
+                                <select class="form-control" id="status_reativacao" name="status" required>
+                                    <option value="">Selecione o novo status</option>
+                                    <option value="Pendente">Pendente (Voltar para conferência)</option>
+                                    {% if nc.ref_sisnc %}
+                                    <option value="Cadastrada SISNC">Cadastrada SISNC (Manter referência)</option>
+                                    {% endif %}
+                                    {% if nc.nc_siafi %}
+                                    <option value="Processada SIAFI">Processada SIAFI (Manter número SIAFI)</option>
+                                    {% endif %}
+                                </select>
+                                <small class="form-text text-muted">
+                                    Selecione para qual status a NC deve retornar após a reativação.
+                                </small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="motivo_reativacao">Motivo da reativação:</label>
+                                <textarea class="form-control" id="motivo_reativacao" name="motivo_reativacao" 
+                                          rows="3" placeholder="Digite o motivo da reativação..." required></textarea>
+                                <small class="form-text text-muted">
+                                    Este motivo será registrado no histórico da Nota de Crédito.
+                                </small>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-warning" 
+                                    onclick="return confirm('Tem certeza que deseja REATIVAR esta Nota de Crédito?')">
+                                <i class="fas fa-undo"></i> Reativar Nota de Crédito
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <form method="POST" action="{{ url_for('editar_nc', id=nc.id) }}">
+                    <!-- Dados Básicos -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Número da NC:</label>
+                                <input type="text" class="form-control" name="numero" value="{{ nc.numero }}" {% if nc.status != 'Não Conferida' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Status Atual:</label>
+                                <input type="text" class="form-control" value="{{ nc.status }}" readonly style="background-color: #f8f9fa;">
+                                <small class="form-text text-muted">
+                                    Status automático baseado no preenchimento dos campos abaixo
+                                </small>
+                            </div>
+                        </div>
+                        {% if current_user.nivel_acesso == 'admin' %}
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Cancelar NC:</label>
+                                <select class="form-control" name="status" id="status_select" 
+                                        {% if nc.status == 'Cancelada' %}disabled{% endif %}>
+                                    <option value="">-- Manter status automático --</option>
+                                    <option value="Cancelada" {% if nc.status == 'Cancelada' %}selected{% endif %}>Cancelar Esta NC</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    Apenas selecione para cancelar a NC
+                                </small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Campo de motivo para cancelamento (visível apenas ao selecionar Cancelada) -->
+                    {% if nc.status != 'Cancelada' %}
+                    <div class="form-group mb-4" id="motivo_cancelamento_group" style="display: none;">
+                        <label for="motivo_cancelamento">Motivo do Cancelamento:</label>
+                        <textarea class="form-control" id="motivo_cancelamento" name="motivo_cancelamento" 
+                                  rows="3" placeholder="Digite o motivo do cancelamento..."></textarea>
+                        <small class="form-text text-muted">
+                            Campo obrigatório para justificar o cancelamento da Nota de Crédito.
+                        </small>
+                    </div>
+                    {% endif %}
+
+                    <!-- Dados da UG -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>COD UG:</label>
+                                <input type="text" class="form-control" name="cod_ug" value="{{ nc.cod_ug or '' }}" {% if nc.status != 'Não Conferida' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>SIGLA UG:</label>
+                                <input type="text" class="form-control" name="sigla_ug" value="{{ nc.sigla_ug or '' }}" {% if nc.status != 'Não Conferida' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>PI:</label>
+                                <input type="text" class="form-control" name="pi" value="{{ nc.pi or '' }}" {% if nc.status != 'Não Conferida' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>ND:</label>
+                                <input type="text" class="form-control" name="nd" value="{{ nc.nd or '' }}" {% if nc.status != 'Não Conferida' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Valores e Referências -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Valor (R$):</label>
+                                    <input type="text" class="form-control" name="valor"
+                                        value="{{ "%.2f"|format(nc.valor)|replace('.', ',') if nc.valor else '0,00' }}" 
+                                        {% if nc.status != 'Não Conferida' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>REF SISNC:</label>
+                                    <input type="text" class="form-control" name="ref_sisnc" value="{{ nc.ref_sisnc or '' }}" 
+                                        placeholder="Digite a referência SISNC"
+                                        {% if nc.status == 'Cancelada' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                                <small class="form-text text-muted">
+                                    Ao preencher, status muda para <strong>Cadastrada SISNC</strong>
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>NC SIAFI:</label>
+                                    <input type="text" class="form-control" name="nc_siafi" value="{{ nc.nc_siafi or '' }}" 
+                                        placeholder="Digite o número SIAFI"
+                                        {% if nc.status == 'Cancelada' %}readonly style="background-color: #f8f9fa;"{% endif %}>
+                                <small class="form-text text-muted">
+                                    Só pode ser preenchido após REF SISNC. Muda status para <strong>Processada SIAFI</strong>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Descrição Editável -->
+                    <div class="form-group mb-4">
+                        <label>Descrição da Nota de Crédito:</label>
+                        <textarea class="form-control" name="descricao" rows="8" 
+                                  placeholder="A descrição é gerada automaticamente baseada no PI e ND. Edite conforme necessário..."
+                                  {% if nc.status == 'Cancelada' %}readonly style="background-color: #f8f9fa;"{% endif %}>{{ nc.descricao or '' }}</textarea>
+                        <small class="form-text text-muted">
+                            <strong>Como funciona:</strong> 
+                            1. Descrição é gerada automaticamente com base no PI e ND<br>
+                            2. Para PIs como E6SUSOLA7PA, E6SUPLJA7PA, etc., aparecerá "a ser digitado pelo usuário"<br>
+                            3. Para outros casos, a descrição já vem completa<br>
+                            4. <strong>Você pode editar livremente após a geração</strong>
+                        </small>
+                    </div>
+
+                    <!-- Opção para marcar como Conferida -->
+                    <div class="alert alert-success mb-4">
+                        <h6><i class="fas fa-check-double"></i> Conferência da Nota de Crédito</h6>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="conferida" id="conferida" 
+                                   value="true" 
+                                   {% if nc.status == 'Pendente' %}checked disabled{% endif %}
+                                   {% if nc.status in ['Cadastrada SISNC', 'Processada SIAFI', 'Cancelada'] %}disabled{% endif %}>
+                            <label class="form-check-label" for="conferida">
+                                <strong>✔️ Conferir esta Nota de Crédito</strong>
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                <strong>Fluxo:</strong> Não Conferida → <strong>Conferida</strong> (Pendente) → Cadastrada SISNC → Processada SIAFI
+                                <br>
+                                {% if nc.status == 'Não Conferida' %}
+                                <span class="text-warning">⚠️ Esta NC ainda não foi conferida. Marque esta opção para prosseguir.</span>
+                                {% elif nc.status == 'Pendente' %}
+                                <span class="text-success">✅ Esta NC já foi conferida e está pronta para receber REF SISNC.</span>
+                                {% elif nc.status in ['Cadastrada SISNC', 'Processada SIAFI'] %}
+                                <span class="text-info">ℹ️ Esta NC já avançou no fluxo e não pode mais ser alterada.</span>
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Informações da Solicitação Relacionada -->
+                    {% if nc.solicitacao_pdrlog_id %}
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-link"></i> Solicitação Relacionada</h6>
+                        <p class="mb-0">
+                            Esta Nota de Crédito foi gerada a partir da solicitação:
+                            <a href="{{ url_for('detalhes_solicitacao', id=nc.solicitacao_pdrlog_id) }}" class="font-weight-bold">
+                                {{ nc.solicitacao_origem.numero if nc.solicitacao_origem else 'N/A' }}
+                            </a>
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Informações da PRO Relacionada -->
+                    {% if nc.pro_origem %}
+                    <div class="alert alert-warning mb-4">
+                        <h6><i class="fas fa-file-contract"></i> PRO Relacionada</h6>
+                        <p class="mb-0">
+                            Esta Nota de Crédito foi convertida da PRO:
+                            <a href="{{ url_for('detalhes_pro', id=nc.pro_origem.id) }}" class="font-weight-bold">
+                                {{ nc.pro_origem.numero }}
+                            </a>
+                        </p>
+                    </div>
+                    {% endif %}
+
+                    <!-- Fluxo de Status -->
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-info-circle"></i> Fluxo Automático de Status</h6>
+                        <p class="mb-2">
+                            <strong>Não Conferida</strong> → <strong>Pendente</strong> (após conferência) → <strong>Cadastrada SISNC</strong> (ao preencher REF SISNC) → <strong>Processada SIAFI</strong> (ao preencher NC SIAFI)
+                        </p>
+                        <p class="mb-0">
+                            <strong>Cancelada</strong>: apenas por seleção manual no campo acima
+                        </p>
+                    </div>
+
+                    <!-- Informações do Sistema -->
+                    <div class="mt-4 pt-3 border-top">
+                        <h6 class="font-weight-bold mb-3">Informações do Sistema</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Criado por:</strong> {{ nc.usuario.nome if nc.usuario else '--' }}</p>
+                                <p><strong>Email:</strong> {{ nc.usuario.email if nc.usuario else '--' }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Última atualização:</strong> {{ nc.data_atualizacao.strftime('%d/%m/%Y às %H:%M') if nc.data_atualizacao else '--' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botões de Ação -->
+                    <div class="form-group mt-4">
+                        <button type="submit" class="btn btn-primary" {% if nc.status == 'Cancelada' %}disabled{% endif %}>
+                            <i class="fas fa-save"></i> Atualizar Nota de Crédito
+                        </button>
+                        <a href="{{ url_for('listar_ncs') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar para Lista
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.status-não-conferida { background-color: #f39c12; color: white; }
+.status-pendente { background-color: #3498db; color: white; }
+.status-cadastrada-sisnc { background-color: #17a2b8; color: white; }
+.status-processada-siafi { background-color: #28a745; color: white; }
+.status-cancelada { background-color: #e74c3c; color: white; }
+
+.btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+
+.form-control[readonly] {
+    background-color: #f8f9fa !important;
+    cursor: not-allowed;
+}
+
+textarea {
+    font-family: monospace;
+    white-space: pre-wrap;
+}
+
+.badge {
+    font-size: 0.8em;
+    padding: 0.5em 0.8em;
+}
+
+.alert h6 {
+    margin-bottom: 0.5rem;
+}
+
+/* Melhorias responsivas */
+@media (max-width: 768px) {
+    .btn {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('status_select');
+    const motivoCancelamentoGroup = document.getElementById('motivo_cancelamento_group');
+    const motivoCancelamentoInput = document.getElementById('motivo_cancelamento');
+    const refSisncInput = document.querySelector('input[name="ref_sisnc"]');
+    const ncSiafiInput = document.querySelector('input[name="nc_siafi"]');
+    const conferidaCheckbox = document.getElementById('conferida');
+    const statusAtual = document.querySelector('.card-header .badge').textContent.trim();
+    const descricaoTextarea = document.querySelector('textarea[name="descricao"]');
+    const formEditar = document.querySelector('form[action*="editar_nc"]');
+    const formReativar = document.querySelector('form[action*="reativar_nc"]');
+    
+    // Mostrar/ocultar campo de motivo ao selecionar cancelamento
+    if (statusSelect && motivoCancelamentoGroup) {
+        statusSelect.addEventListener('change', function() {
+            if (this.value === 'Cancelada') {
+                motivoCancelamentoGroup.style.display = 'block';
+                if (motivoCancelamentoInput) {
+                    motivoCancelamentoInput.required = true;
+                }
+            } else {
+                motivoCancelamentoGroup.style.display = 'none';
+                if (motivoCancelamentoInput) {
+                    motivoCancelamentoInput.required = false;
+                    motivoCancelamentoInput.value = '';
+                }
+            }
+        });
+        
+        // Verificar estado inicial
+        if (statusSelect.value === 'Cancelada') {
+            motivoCancelamentoGroup.style.display = 'block';
+        }
+    }
+    
+    // Habilitar/desabilitar campos baseado no status
+    function atualizarEstadoCampos() {
+        const status = statusAtual;
+        
+        // Permitir edição de REF SISNC e NC SIAFI em qualquer status, exceto Cancelada
+        if (refSisncInput) {
+            if (status !== 'Cancelada') {
+                refSisncInput.removeAttribute('readonly');
+                refSisncInput.style.backgroundColor = '';
+            } else {
+                refSisncInput.setAttribute('readonly', 'readonly');
+                refSisncInput.style.backgroundColor = '#f8f9fa';
+            }
+        }
+        if (ncSiafiInput) {
+            if (status !== 'Cancelada') {
+                ncSiafiInput.removeAttribute('readonly');
+                ncSiafiInput.style.backgroundColor = '';
+            } else {
+                ncSiafiInput.setAttribute('readonly', 'readonly');
+                ncSiafiInput.style.backgroundColor = '#f8f9fa';
+            }
+        }
+        
+        // Checkbox de conferida
+        if (conferidaCheckbox) {
+            conferidaCheckbox.disabled = !podeConferir || status === 'Cancelada';
+        }
+        
+        // Descrição SEMPRE editável (exceto Cancelada)
+        if (descricaoTextarea && status !== 'Cancelada') {
+            descricaoTextarea.removeAttribute('readonly');
+            descricaoTextarea.style.backgroundColor = '';
+        }
+    }
+    
+    // Atualizar estado inicial
+    atualizarEstadoCampos();
+    
+    // Atualizar quando REF SISNC mudar
+    if (refSisncInput) {
+        refSisncInput.addEventListener('input', function() {
+            atualizarEstadoCampos();
+        });
+    }
+    
+    // Validar formulário de edição antes do envio
+    if (formEditar) {
+        formEditar.addEventListener('submit', function(e) {
+            const ncSiafiPreenchido = ncSiafiInput && ncSiafiInput.value.trim() !== '';
+            const refSisncPreenchido = refSisncInput && refSisncInput.value.trim() !== '';
+            const statusSelecionado = statusSelect ? statusSelect.value : '';
+            const motivoCancelamento = motivoCancelamentoInput ? motivoCancelamentoInput.value.trim() : '';
+            
+            // Regra 1: Não pode ter NC SIAFI sem REF SISNC
+            if (ncSiafiPreenchido && !refSisncPreenchido) {
+                e.preventDefault();
+                alert('Erro: Não é possível preencher NC SIAFI sem antes preencher REF SISNC!');
+                if (refSisncInput) refSisncInput.focus();
+                return false;
+            }
+            
+            // Regra 2: Não pode preencher REF SISNC se NC não foi conferida
+            if (refSisncPreenchido && statusAtual === 'Não Conferida') {
+                e.preventDefault();
+                alert('Erro: Para preencher REF SISNC, a Nota de Crédito deve primeiro ser conferida!\n\nMarque a opção "Conferir esta Nota de Crédito".');
+                if (conferidaCheckbox) conferidaCheckbox.focus();
+                return false;
+            }
+            
+            // Regra 3: Se for cancelar, precisa de motivo
+            if (statusSelecionado === 'Cancelada' && !motivoCancelamento) {
+                e.preventDefault();
+                alert('Erro: É necessário informar o motivo do cancelamento!');
+                if (motivoCancelamentoInput) {
+                    motivoCancelamentoInput.focus();
+                }
+                return false;
+            }
+            
+            // Regra 4: Confirmação se está conferindo
+            const conferidaMarcada = conferidaCheckbox ? conferidaCheckbox.checked : false;
+            if (conferidaMarcada) {
+                if (!confirm('Tem certeza que deseja marcar esta Nota de Crédito como conferida?\n\nApós conferência, o status mudará para "Pendente" e será possível preencher REF SISNC.')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            // Regra 5: Confirmação se for cancelar
+            if (statusSelecionado === 'Cancelada') {
+                if (!confirm('⚠️ ATENÇÃO: Tem certeza que deseja CANCELAR esta Nota de Crédito?\n\nApós o cancelamento:\n1. A NC não poderá mais ser editada normalmente\n2. As referências SISNC/SIAFI serão removidas\n3. Será necessário reativar manualmente')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+            
+            return true;
+        });
+    }
+    
+    // Validar formulário de reativação
+    if (formReativar) {
+        formReativar.addEventListener('submit', function(e) {
+            const statusReativacao = document.getElementById('status_reativacao');
+            const motivoReativacao = document.getElementById('motivo_reativacao');
+            
+            if (!statusReativacao || !statusReativacao.value) {
+                e.preventDefault();
+                alert('Erro: Selecione o novo status para a reativação!');
+                if (statusReativacao) statusReativacao.focus();
+                return false;
+            }
+            
+            if (!motivoReativacao || !motivoReativacao.value.trim()) {
+                e.preventDefault();
+                alert('Erro: Informe o motivo da reativação!');
+                if (motivoReativacao) motivoReativacao.focus();
+                return false;
+            }
+            
+            if (!confirm('⚠️ ATENÇÃO: Tem certeza que deseja REATIVAR esta Nota de Crédito?\n\nA NC retornará ao fluxo normal com o status selecionado.')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            return true;
+        });
+    }
+});
+</script>
+{% endblock %}

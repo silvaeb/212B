@@ -1,0 +1,23 @@
+<!-- Modal para conversão em Nota de Crédito (DIEx) -->
+<div class="modal fade" id="modalConverterNC" tabindex="-1" role="dialog" aria-labelledby="modalConverterNCTitle" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalConverterNCTitle">Converter em Nota de Crédito</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <strong>Saldo disponível para conversão:</strong> {{ (pro.valor_restante if pro.valor_restante is not none else pro.valor_total)|format_currency }}
+        </div>
+        <p class="mb-0">A conversão agora e feita em duas etapas (dados do DIEx e valores). Clique abaixo para continuar.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <a class="btn btn-primary" href="{{ url_for('converter_pro_em_nc', id=pro.id) }}">
+          Ir para conversao
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

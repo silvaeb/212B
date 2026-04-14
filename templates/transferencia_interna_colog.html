@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Transferências Interna COLOG{% endblock %}
+{% block page_title %}Transferências Interna COLOG{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Lista de Transferências Interna COLOG</h5>
+        </div>
+        <div class="card-body">
+            {% if transferencias and transferencias|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Nº Solicitação</th>
+                            <th>Data</th>
+                            <th>Órgão Demandante</th>
+                            <th>DIEx</th>
+                            <th>Destinatario COLOG</th>
+                            <th>Descrição</th>
+                            <th>Status</th>
+                            <th>Valor Solicitado</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for solicitacao in transferencias %}
+                        <tr>
+                            <td>{{ solicitacao.numero }}</td>
+                            <td>{{ solicitacao.data_solicitacao.strftime('%d/%m/%Y') if solicitacao.data_solicitacao else '--' }}</td>
+                            <td>{{ solicitacao.orgao_demandante or '--' }}</td>
+                            <td>{{ solicitacao.diex or '--' }}</td>
+                            <td>{{ solicitacao.destinatario_colog or '--' }}</td>
+                            <td>{{ solicitacao.descricao or '--' }}</td>
+                            <td>{{ solicitacao.status or '--' }}</td>
+                            <td>{{ solicitacao.total_solicitado|format_currency }}</td>
+                            <td>
+                                <a href="{{ url_for('detalhes_solicitacao', id=solicitacao.id) }}" class="btn btn-sm btn-primary">Detalhes</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">Nenhuma transferência encontrada.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

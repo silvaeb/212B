@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Auditoria NE – Conformidade de Empenhos{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+.auditoria-ne-wrapper {
+    min-height: 100vh;
+    background: linear-gradient(135deg, rgba(8,31,56,0.96), rgba(4,13,24,0.98));
+}
+.card-dark {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    color: #fff;
+}
+.card-dark .card-header {
+    background: rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px 12px 0 0;
+}
+.badge-conforme    { background: #198754; }
+.badge-nao        { background: #dc3545; }
+.badge-mapeado    { background: #6c757d; }
+.stat-box {
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    text-align: center;
+}
+.stat-box .stat-num  { font-size: 2rem; font-weight: 700; line-height: 1.1; }
+.stat-box .stat-label{ font-size: 0.78rem; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+.table-ne { font-size: 0.72rem; table-layout: fixed; width: 100%; }
+.table-ne thead th { background: rgba(255,255,255,0.12); color: #FFD600; white-space: normal; line-height: 1.15; position: sticky; top: 0; z-index: 2; }
+.table-ne tbody tr:hover { background: rgba(255,255,255,0.06); }
+.table-ne tbody td { color: #e8e8e8; vertical-align: top; }
+.table-ne th, .table-ne td { padding: .4rem .35rem; overflow-wrap: anywhere; word-break: break-word; }
+.table-ne col:nth-child(1)  { width: 6%; }
+.table-ne col:nth-child(2)  { width: 6%; }
+.table-ne col:nth-child(3)  { width: 8%; }
+.table-ne col:nth-child(4)  { width: 10%; }
+.table-ne col:nth-child(5)  { width: 9%; }
+.table-ne col:nth-child(6)  { width: 8%; }
+.table-ne col:nth-child(7)  { width: 6%; }
+.table-ne col:nth-child(8)  { width: 11%; }
+.table-ne col:nth-child(9)  { width: 22%; }
+.table-ne col:nth-child(10) { width: 4%; }
+.table-ne col:nth-child(11) { width: 6%; }
+.table-ne col:nth-child(12) { width: 10%; }
+.table-ne td:nth-child(1),
+.table-ne td:nth-child(2),
+.table-ne td:nth-child(3),
+.table-ne td:nth-child(4),
+.table-ne td:nth-child(5),
+.table-ne td:nth-child(6),
+.table-ne td:nth-child(7),
+.table-ne td:nth-child(10),
+.table-ne td:nth-child(11),
+.table-ne td:nth-child(12) { white-space: normal; }
+.export-actions .btn { min-width: 132px; }
+.cell-conforme   { color: #4ade80 !important; font-weight: 600; }
+.cell-nao        { color: #f87171 !important; font-weight: 600; }
+.cell-mapeado    { color: #9ca3af !important; font-weight: 600; }
+.upload-zone {
+    border: 2px dashed rgba(255,255,255,0.3);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: border-color .2s;
+}
+.upload-zone:hover { border-color: rgba(255,255,255,0.6); }
+.filter-bar input, .filter-bar select {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    border-radius: 6px;
+}
+.filter-bar input::placeholder { color: rgba(255,255,255,0.4); }
+.filter-bar input:focus, .filter-bar select:focus {
+    background: rgba(255,255,255,0.15);
+    border-color: rgba(255,255,255,0.5);
+    color: #fff;
+    box-shadow: none;
+    outline: none;
+}
+.filter-bar select option { background: #1a2a3a; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auditoria-ne-wrapper py-4">
+<div class="container-fluid px-4">
+
+    <!-- Breadcrumb / título -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="{{ url_for('painel_subsistencia') }}" class="btn btn-sm btn-outline-light">
+            <i class="fas fa-arrow-left me-1"></i> Painel Subsistência
+        </a>
+        <div>
+            <h3 class="text-white mb-0">
+                <i class="fas fa-file-contract me-2 text-warning"></i>
+                Auditoria de Conformidade – Notas de Empenho
+            </h3>
+            <small class="text-secondary">Verificação de enquadramento PI × Natureza de Despesa × Subitem</small>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+        <div class="alert alert-{{ 'danger' if cat == 'error' else cat }} alert-dismissible fade show" role="alert">
+            {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% if erro %}
+    <div class="alert alert-warning">{{ erro }}</div>
+    {% endif %}
+
+    <div class="row g-4">
+        <!-- Coluna de Upload -->
+        <div class="col-lg-4">
+            <div class="card-dark p-0 mb-4">
+                <div class="card-header px-4 py-3">
+                    <h6 class="mb-0 text-warning"><i class="fas fa-upload me-2"></i>Upload Planilha NE</h6>
+                </div>
+                <div class="p-4">
+                    {% if current_user.nivel_acesso == 'admin' %}
+                    <form action="{{ url_for('auditoria_ne') }}" method="post" enctype="multipart/form-data">
+                        <div class="upload-zone mb-3">
+                            <label class="text-white-50 small d-block mb-2">Planilha NE (formato NE MNT OP)</label>
+                            <input type="file" name="ne_file" accept=".xls,.xlsx" class="form-control form-control-sm" required>
+                            <small class="text-white-50 d-block mt-2">
+                                Cabeçalho esperado na 3ª linha.<br>
+                                Colunas: PI (E), Natureza Despesa (D), NE Item – Subelemento (I).
+                            </small>
+                        </div>
+                        <button type="submit" class="btn btn-warning w-100">
+                            <i class="fas fa-search me-2"></i>Processar e Auditar
+                        </button>
+                    </form>
+
+                    <hr class="border-secondary my-4">
+
+                    <div>
+                        <h6 class="text-white-50 small mb-2">
+                            <i class="fas fa-table me-1"></i>Atualizar Enquadramento Despesas
+                        </h6>
+                        <form action="{{ url_for('upload_enquadramento_ne') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap">
+                            <input type="file" name="enquadramento_file" accept=".xls,.xlsx" class="form-control form-control-sm" style="min-width:0;flex:1;">
+                            <button type="submit" class="btn btn-sm btn-outline-light">Atualizar</button>
+                        </form>
+                        <small class="text-white-50 d-block mt-1">PI (col A) + Subelemento ND (col B) – cabeçalho na 1ª linha.</small>
+                    </div>
+                    {% else %}
+                    <p class="text-white-50 small">Apenas administradores podem fazer upload de planilhas.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Legenda -->
+            <div class="card-dark p-4">
+                <h6 class="text-warning mb-3"><i class="fas fa-info-circle me-2"></i>Legenda</h6>
+                <div class="d-flex flex-column gap-2 small text-white">
+                    <div><span class="badge badge-conforme me-2">Conforme</span> Combinação PI + ND + Subitem autorizada pelo Enquadramento.</div>
+                    <div><span class="badge badge-nao me-2">Não Conforme</span> PI existe no Enquadramento, mas ND/Subitem não está autorizado.</div>
+                    <div><span class="badge badge-mapeado me-2">PI Não Mapeado</span> PI da NE não consta na tabela de Enquadramento Despesas.</div>
+                </div>
+                <hr class="border-secondary mt-3 mb-2">
+                <p class="text-white-50 small mb-0">
+                    Referência: <strong class="text-white">Enquadramento Despesas.xlsx</strong><br>
+                    Formato Subelemento: <code class="text-warning">33.90.30.03</code> ou <code class="text-warning">33.90.30.03,07,21</code>
+                </p>
+            </div>
+        </div>
+
+        <!-- Coluna de Resultados -->
+        <div class="col-lg-8">
+            {% if resumo %}
+            <!-- Cards de resumo -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="stat-box" style="background:rgba(255,255,255,0.08);">
+                        <div class="stat-num text-white">{{ resumo.total }}</div>
+                        <div class="stat-label text-white-50">Total Itens</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-box" style="background:rgba(25,135,84,0.25); border:1px solid rgba(25,135,84,0.5);">
+                        <div class="stat-num" style="color:#4ade80;">{{ resumo.conforme }}</div>
+                        <div class="stat-label text-white-50">Conformes</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-box" style="background:rgba(220,53,69,0.25); border:1px solid rgba(220,53,69,0.5);">
+                        <div class="stat-num" style="color:#f87171;">{{ resumo.nao_conforme }}</div>
+                        <div class="stat-label text-white-50">Não Conformes</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="stat-box" style="background:rgba(255,214,0,0.12); border:1px solid rgba(255,214,0,0.3);">
+                        <div class="stat-num text-warning">{{ resumo.pct_conforme }}%</div>
+                        <div class="stat-label text-white-50">Taxa Conformidade</div>
+                    </div>
+                </div>
+            </div>
+            {% if resumo.pi_nao_mapeado > 0 %}
+            <div class="alert alert-secondary d-flex align-items-center gap-2 mb-4">
+                <i class="fas fa-exclamation-triangle text-warning"></i>
+                <span><strong>{{ resumo.pi_nao_mapeado }}</strong> item(ns) com PI não encontrado no Enquadramento Despesas.</span>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            {% if timestamp %}
+            <p class="text-white-50 small mb-2"><i class="fas fa-clock me-1"></i>Última análise: <strong class="text-white">{{ timestamp }}</strong></p>
+            {% endif %}
+
+            {% if resultado %}
+            <!-- Filtros -->
+            <div class="filter-bar d-flex gap-2 flex-wrap mb-3">
+                <input type="text" id="filterText" class="form-control form-control-sm" placeholder="Buscar NE, PI, ND, subitem..." style="max-width:260px;">
+                <select id="filterConformidade" class="form-select form-select-sm" style="max-width:180px;">
+                    <option value="">Todas conformidades</option>
+                    <option value="Conforme">Conforme</option>
+                    <option value="Não Conforme">Não Conforme</option>
+                    <option value="PI Não Mapeado">PI Não Mapeado</option>
+                </select>
+                <select id="filterPI" class="form-select form-select-sm" style="max-width:200px;">
+                    <option value="">Todos os PI</option>
+                    {% set pis = resultado | map(attribute='pi') | unique | sort %}
+                    {% for pi in pis %}
+                    <option value="{{ pi }}">{{ pi }}</option>
+                    {% endfor %}
+                </select>
+                <button class="btn btn-sm btn-outline-secondary" onclick="limparFiltros()">
+                    <i class="fas fa-times me-1"></i>Limpar
+                </button>
+            </div>
+
+            <!-- Tabela -->
+            <div class="card-dark p-0">
+                <div class="card-header px-4 py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-warning"><i class="fas fa-table me-2"></i>Itens Analisados</h6>
+                    <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end export-actions">
+                        <a href="{{ url_for('exportar_auditoria_ne_excel') }}" class="btn btn-sm btn-outline-light" id="btnExportarExcel">
+                            <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                        </a>
+                        <a href="{{ url_for('exportar_auditoria_ne_pdf') }}" class="btn btn-sm btn-outline-light" id="btnExportarPdf">
+                            <i class="fas fa-file-pdf me-1"></i>Exportar PDF
+                        </a>
+                        <span id="contadorItens" class="badge bg-secondary">{{ resultado | length }} itens</span>
+                    </div>
+                </div>
+                <div style="max-height:600px;overflow-y:auto;overflow-x:hidden;">
+                    <table class="table table-sm table-dark table-hover mb-0 table-ne" id="tabelaNE">
+                        <colgroup>
+                            <col><col><col><col><col><col><col><col><col><col><col><col>
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>RM</th>
+                                <th>UG</th>
+                                <th>Sigla UG</th>
+                                <th>NE</th>
+                                <th>PI</th>
+                                <th>Natureza Despesa</th>
+                                <th>Subitem</th>
+                                <th>Nome Subitem</th>
+                                <th>Descrição do Item</th>
+                                <th>Qtde Item</th>
+                                <th>Valor</th>
+                                <th>Conformidade</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpoTabela">
+                        {% for item in resultado %}
+                        <tr data-conf="{{ item.conformidade }}" data-pi="{{ item.pi }}">
+                            <td class="font-monospace text-center">{{ item.rm or '-' }}</td>
+                            <td title="{{ item.ug_nome }}">{{ item.ug_cod }}</td>
+                            <td class="font-monospace text-center">{{ item.sigla_ug or '-' }}</td>
+                            <td class="font-monospace small" title="{{ item.descricao }}">{{ item.ne[-12:] if item.ne|length > 12 else item.ne }}</td>
+                            <td>{{ item.pi }}</td>
+                            <td class="font-monospace">{{ item.nd_fmt }}</td>
+                            <td class="font-monospace text-center">{{ item.subitem_fmt }}</td>
+                            <td>{{ item.subitem_nome }}</td>
+                            <td title="{{ item.item_desc }}">{{ item.item_desc }}</td>
+                            <td class="text-center">{{ item.qtde_item }}</td>
+                            <td class="text-end font-monospace">{{ item.valor }}</td>
+                            <td>
+                                {% if item.conformidade == 'Conforme' %}
+                                <span class="cell-conforme"><i class="fas fa-check-circle me-1"></i>Conforme</span>
+                                {% elif item.conformidade == 'Não Conforme' %}
+                                <span class="cell-nao"><i class="fas fa-times-circle me-1"></i>Não Conforme</span>
+                                {% else %}
+                                <span class="cell-mapeado"><i class="fas fa-question-circle me-1"></i>PI Não Mapeado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% elif not erro %}
+            <div class="card-dark p-5 text-center">
+                <i class="fas fa-file-upload fa-3x text-white-50 mb-3"></i>
+                <p class="text-white-50 mb-0">
+                    Nenhum dado carregado ainda.<br>
+                    Faça o upload de uma planilha NE para iniciar a auditoria.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+(function () {
+    var textInput    = document.getElementById('filterText');
+    var confSel      = document.getElementById('filterConformidade');
+    var piSel        = document.getElementById('filterPI');
+    var contador     = document.getElementById('contadorItens');
+    var tbody        = document.getElementById('corpoTabela');
+    var btnExcel     = document.getElementById('btnExportarExcel');
+    var btnPdf       = document.getElementById('btnExportarPdf');
+
+    if (!tbody) return;   // página sem dados
+
+    function atualizarLinksExportacao() {
+        var params = new URLSearchParams();
+        var txt = textInput ? textInput.value.trim() : '';
+        var conf = confSel ? confSel.value : '';
+        var pi = piSel ? piSel.value : '';
+
+        if (txt) params.set('filter_text', txt);
+        if (conf) params.set('filter_conformidade', conf);
+        if (pi) params.set('filter_pi', pi);
+
+        var sufixo = params.toString();
+        var excelBase = "{{ url_for('exportar_auditoria_ne_excel') }}";
+        var pdfBase = "{{ url_for('exportar_auditoria_ne_pdf') }}";
+
+        if (btnExcel) btnExcel.href = sufixo ? excelBase + '?' + sufixo : excelBase;
+        if (btnPdf) btnPdf.href = sufixo ? pdfBase + '?' + sufixo : pdfBase;
+    }
+
+    function aplicarFiltros() {
+        var txt  = (textInput ? textInput.value.toLowerCase() : '');
+        var conf = (confSel  ? confSel.value  : '');
+        var pi   = (piSel    ? piSel.value    : '');
+        var rows = tbody.querySelectorAll('tr');
+        var visiveis = 0;
+        rows.forEach(function (tr) {
+            var rowConf = tr.getAttribute('data-conf') || '';
+            var rowPi   = tr.getAttribute('data-pi')   || '';
+            var rowText = tr.textContent.toLowerCase();
+            var ok = true;
+            if (txt  && rowText.indexOf(txt)  === -1) ok = false;
+            if (conf && rowConf !== conf) ok = false;
+            if (pi   && rowPi   !== pi)   ok = false;
+            tr.style.display = ok ? '' : 'none';
+            if (ok) visiveis++;
+        });
+        if (contador) contador.textContent = visiveis + ' itens';
+        atualizarLinksExportacao();
+    }
+
+    if (textInput)  textInput.addEventListener('input',  aplicarFiltros);
+    if (confSel)    confSel.addEventListener('change',   aplicarFiltros);
+    if (piSel)      piSel.addEventListener('change',     aplicarFiltros);
+
+    window.limparFiltros = function () {
+        if (textInput) textInput.value = '';
+        if (confSel)   confSel.value   = '';
+        if (piSel)     piSel.value     = '';
+        aplicarFiltros();
+    };
+
+    atualizarLinksExportacao();
+})();
+</script>
+{% endblock %}

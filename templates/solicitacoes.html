@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}Solicitações - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Solicitações Extra PDRLOG{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="status">Status:</label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="">Todos os Status</option>
+                                    {% for status in status_list %}
+                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="finalidade">Finalidade:</label>
+                                <select class="form-control" id="finalidade" name="finalidade">
+                                    <option value="">Todas as Finalidades</option>
+                                    {% for finalidade in finalidades %}
+                                    <option value="{{ finalidade }}" {% if finalidade_filter == finalidade %}selected{% endif %}>{{ finalidade }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="modalidade">Modalidade:</label>
+                                <select class="form-control" id="modalidade" name="modalidade">
+                                    <option value="">Todas as Modalidades</option>
+                                    {% for modalidade in modalidades %}
+                                    <option value="{{ modalidade }}" {% if modalidade_filter == modalidade %}selected{% endif %}>{{ modalidade|upper }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="diex">DIEx:</label>
+                                <input type="text" class="form-control" id="diex" name="diex" value="{{ diex_filter }}" placeholder="Ex: 123/2025">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="om">OM:</label>
+                                <input type="text" class="form-control" id="om" name="om" value="{{ om_filter }}" placeholder="Ex: 1ª RM">
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary mr-2">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('listar_solicitacoes') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Limpar
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Lista de Solicitações</h6>
+                <a href="{{ url_for('nova_solicitacao') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> Nova Solicitação
+                </a>
+            </div>
+            <div class="card-body">
+                {% if solicitacoes %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th width="12%">Nº Solicitação</th>
+                                <th width="8%">Data</th>
+                                <th width="10%">DIEx</th>
+                                <th width="15%">Órgão Demandante</th>
+                                <th width="25%">Descrição</th>
+                                <th width="12%" class="text-right">Valor Solicitado</th>
+                                <th width="10%">Status</th>
+                                <th width="8%">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for solicitacao in solicitacoes %}
+                            <tr>
+                                <td><strong>{{ solicitacao.numero }}</strong></td>
+                                <td>{{ solicitacao.data_solicitacao.strftime('%d/%m/%Y') if solicitacao.data_solicitacao else '--' }}</td>
+                                <td>{{ solicitacao.diex or '--' }}</td>
+                                <td>{{ solicitacao.orgao_demandante or '--' }}</td>
+                                <td class="text-truncate" style="max-width: 200px;" title="{{ solicitacao.descricao or '' }}">
+                                    {% if solicitacao.descricao %}
+                                        {{ solicitacao.descricao }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td class="text-right font-weight-bold" style="font-size: 0.9em; white-space: nowrap; color: #2e59d9;">
+                                    {# Usa o total calculado no modelo e o filtro de moeda reutilizável #}
+                                    {% set total_solicitado = solicitacao.total_solicitado %}
+                                    {{ total_solicitado|format_currency }}
+                                </td>
+                                <td>
+                                    <span class="badge {% if solicitacao.status == 'Aguardando Análise' %}bg-warning text-dark
+                                                     {% elif solicitacao.status == 'Em Análise' %}bg-info text-white
+                                                     {% elif solicitacao.status == 'Aguardando despacho' %}bg-primary text-white
+                                                     {% elif solicitacao.status == 'Aprovado Ch Sup' %}bg-success text-white
+                                                     {% elif solicitacao.status == 'Aprovado Parcialmente' %}bg-success text-white
+                                                     {% elif solicitacao.status == 'Negado Ch Sup' %}bg-danger text-white
+                                                     {% elif solicitacao.status == 'Arquivado' %}bg-secondary text-white
+                                                     {% elif solicitacao.status == 'Devolvido para correções' %}bg-warning text-dark
+                                                     {% else %}bg-light text-dark{% endif %}">
+                                        {{ solicitacao.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('detalhes_solicitacao', id=solicitacao.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nenhuma solicitação encontrada</h5>
+                    <p class="text-muted">
+                        {% if status_filter or finalidade_filter or diex_filter or om_filter %}
+                            Tente ajustar os filtros ou <a href="{{ url_for('listar_solicitacoes') }}">limpar todos os filtros</a>.
+                        {% else %}
+                            Não há solicitações cadastradas no sistema.
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.table th {
+    font-weight: 600;
+    font-size: 0.85em;
+    background-color: #f8f9fa;
+}
+
+.table td {
+    font-size: 0.9em;
+    vertical-align: middle;
+}
+
+.badge {
+    font-weight: 500;
+    font-size: 0.8em;
+    padding: 0.4em 0.6em;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.font-weight-bold {
+    font-weight: 600 !important;
+}
+
+/* Melhorar a aparência da tabela */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.075);
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8em;
+    }
+    
+    .badge {
+        font-size: 0.7em;
+        padding: 0.3em 0.5em;
+    }
+    
+    .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Estilos para os status */
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-primary {
+    background-color: #007bff !important;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.text-dark {
+    color: #212529 !important;
+}
+
+.text-white {
+    color: #fff !important;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Adicionar tooltips do Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Feedback visual ao aplicar filtros
+    const statusSelect = document.getElementById('status');
+    const finalidadeSelect = document.getElementById('finalidade');
+    
+    if (statusSelect && finalidadeSelect) {
+        statusSelect.addEventListener('change', function() {
+            if (this.value) {
+                console.log('Filtro de status selecionado:', this.value);
+            }
+        });
+        
+        finalidadeSelect.addEventListener('change', function() {
+            if (this.value) {
+                console.log('Filtro de finalidade selecionado:', this.value);
+            }
+        });
+    }
+    
+    // Mostrar loading ao submeter formulário
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Filtrando...';
+                submitBtn.disabled = true;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

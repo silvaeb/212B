@@ -1,0 +1,968 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Solicitação - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Nova Solicitação Extra PDRLOG{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Dados da Solicitação</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="formSolicitacao">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="diex">DIEx:</label>
+                                <input type="text" class="form-control" id="diex" name="diex" required placeholder="Número do DIEx">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="orgao_demandante">Órgão Demandante:</label>
+                                <select class="form-control" id="orgao_demandante" name="orgao_demandante" required>
+                                    <option value="">Selecione o órgão demandante</option>
+                                    {% for orgao in orgaos_demandantes %}
+                                    <option value="{{ orgao }}">{{ orgao }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="modalidade">Modalidade:</label>
+                                <select class="form-control" id="modalidade" name="modalidade" required>
+                                    <option value="">Selecione a modalidade</option>
+                                    {% for modalidade in modalidades %}
+                                    <option value="{{ modalidade }}">{{ modalidade|upper }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="data_solicitacao">Data:</label>
+                                <input type="date" class="form-control" id="data_solicitacao" name="data_solicitacao" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="destinatario-colog-section" class="alert alert-info mb-4" style="display: none;">
+                        <h6><i class="fas fa-info-circle"></i> Destinatario do recurso no COLOG</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="destinatario_colog">Destinatario do recurso no COLOG:</label>
+                                    <select class="form-control" id="destinatario_colog" name="destinatario_colog">
+                                        <option value="">Selecione</option>
+                                        <option value="COp Log">COp Log</option>
+                                        <option value="C Mat">C Mat</option>
+                                        <option value="CMAVEx">CMAVEx</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOVA SEÇÃO: Campos específicos para PASA-DEC, Mnt OP-DEC e Câmaras frigoríficas -->
+                    <div id="campos-dec-section" class="alert alert-info mb-4" style="display: none;">
+                        <h6><i class="fas fa-info-circle"></i> Informações Específicas para PASA-DEC / Mnt OP-DEC / Câmaras frigoríficas</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="tem_fsv">Possui FSTVE (Ficha Simplificada Técnica de Viabilidade Econômica)?</label>
+                                    <select class="form-control" id="tem_fsv" name="tem_fsv">
+                                        <option value="">Selecione</option>
+                                        <option value="sim">Sim</option>
+                                        <option value="nao">Não</option>
+                                    </select>
+                                    <small class="form-text text-muted">Obrigatório para finalidades PASA-DEC, Mnt OP-DEC e Câmaras frigoríficas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="diex_dom">DIEx DOM:</label>
+                                    <input type="text" class="form-control" id="diex_dom" name="diex_dom" placeholder="Número do DIEx DOM">
+                                    <small class="form-text text-muted">Obrigatório quando possui FSTVE</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="nr_opus">Nr OPUS:</label>
+                                    <input type="text" class="form-control" id="nr_opus" name="nr_opus" placeholder="Número do OPUS">
+                                    <small class="form-text text-muted">Obrigatório quando possui FSTVE para PASA-DEC, Mnt OP-DEC e Câmaras frigoríficas. Para Câmaras frigoríficas, pode ser cadastrado independente do FSTVE.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seção para múltiplas OMs com múltiplas NDs e finalidades -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label>Pedidos por OM:</label>
+                                <div id="pedidos-container">
+                                    <!-- Primeiro pedido -->
+                                    <div class="pedido-item card mb-3" data-pedido-index="0">
+                                        <div class="card-header bg-light">
+                                            <h6 class="m-0 font-weight-bold">OM 1</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-5">
+                                                    <div class="form-group">
+                                                        <label>OM:</label>
+                                                        <input type="text" class="form-control om-input" name="om[]" 
+                                                               list="oms-list" autocomplete="off" 
+                                                               placeholder="Digite o nome da OM..." required
+                                                               data-oms='{{ oms_data | tojson | safe }}'>
+                                                        <small class="form-text text-muted om-count-text">
+                                                            Digite para buscar entre 0 OMs disponíveis
+                                                        </small>
+                                                        <small class="form-text text-info om-source-text">Fonte: inicializando...</small>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-group">
+                                                        <label>COD OM:</label>
+                                                        <input type="text" class="form-control codom-input" name="codom[]" readonly style="background-color: #f8f9fa;">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="form-group mb-1">
+                                                        <label>COD UG:</label>
+                                                        <input type="text" class="form-control codug-input" name="codug[]" readonly style="background-color: #f8f9fa;">
+                                                    </div>
+                                                    <div class="form-check form-switch mt-1">
+                                                        <input class="form-check-input codug-manual-toggle" type="checkbox" id="codugManual-0">
+                                                        <label class="form-check-label" for="codugManual-0" style="font-size: 0.85rem;">Digitar manual</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <div class="form-group">
+                                                        <label>Sigla UG:</label>
+                                                        <input type="text" class="form-control sigla-ug-input" name="sigla_ug[]" readonly style="background-color: #f8f9fa;">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row">
+                                                <div class="col-12">
+                                                    <div class="form-group">
+                                                        <label>Descrição da Solicitação:</label>
+                                                        <textarea class="form-control descricao-om-input" name="descricao_om[]" rows="2" placeholder="Especificação dos itens da Solicitação"></textarea>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Seção para múltiplas NDs com finalidades -->
+                                            <div class="nds-section mt-3">
+                                                <label>NDs, Finalidades e Valores:</label>
+                                                <div class="nds-container">
+                                                    <!-- Primeiro ND -->
+                                                    <div class="nd-item row mb-2">
+                                                        <div class="col-md-3">
+                                                            <div class="form-group">
+                                                                <label>ND:</label>
+                                                                <select class="form-control nd-select" name="nd[0][]" required>
+                                                                    <option value="">Selecione o ND</option>
+                                                                    {% for nd in nd_possiveis %}
+                                                                    <option value="{{ nd }}">{{ nd }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <div class="form-group">
+                                                                <label>Finalidade:</label>
+                                                                <select class="form-control finalidade-nd-input" name="finalidade_nd[0][]" required>
+                                                                    <option value="">Selecione a finalidade</option>
+                                                                    {% for finalidade in finalidades %}
+                                                                    <option value="{{ finalidade }}">{{ finalidade }}</option>
+                                                                    {% endfor %}
+                                                                </select>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-3">
+                                                            <div class="form-group">
+                                                                <label>Valor Solicitado (R$):</label>
+                                                                <input type="text" class="form-control valor-solicitado-input" name="valor_solicitado[0][]" placeholder="0,00" required value="{{ '%.2f'|format(item.valor_solicitado)|replace('.', ',') if item is defined and item.valor_solicitado is not none else '' }}">
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-2 d-flex flex-column">
+                                                            <div class="form-group mb-2">
+                                                                <label>Valor Aprovado (R$):</label>
+                                                                <input type="text" class="form-control valor-aprovado-input" name="valor_aprovado[0][]" placeholder="0,00" value="{{ '%.2f'|format(item.valor_aprovado)|replace('.', ',') if item is defined and item.valor_aprovado is not none else '' }}">
+                                                            </div>
+                                                            <button type="button" class="btn btn-outline-danger btn-sm remove-nd align-self-start" title="Remover ND">
+                                                                <i class="fas fa-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button type="button" class="btn btn-secondary btn-sm mt-2 add-nd" data-pedido-index="0">
+                                                    <i class="fas fa-plus"></i> Adicionar ND
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="row mt-3">
+                                                <div class="col-12">
+                                                    <button type="button" class="btn btn-danger btn-sm remove-pedido" style="display: none;">
+                                                        <i class="fas fa-trash"></i> Remover OM
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-primary btn-sm mt-2" id="add-pedido">
+                                    <i class="fas fa-plus"></i> Adicionar OM
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Cadastrar Solicitação
+                        </button>
+                        <a href="{{ url_for('listar_solicitacoes') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let pedidoCount = 0;
+    let omsCache = null;
+    const parseOmsAttr = (inputEl) => {
+        try {
+            return JSON.parse(inputEl?.getAttribute('data-oms') || '[]');
+        } catch (err) {
+            console.error('Dados de OMs inválidos no template', err);
+            return [];
+        }
+    };
+
+    const getCachedOms = () => Array.isArray(omsCache) ? omsCache : [];
+
+    const atualizarTextoQuantidadeOms = () => {
+        const total = getCachedOms().length;
+        document.querySelectorAll('.om-count-text').forEach(el => {
+            el.textContent = `Digite para buscar entre ${total} OMs disponíveis`;
+        });
+    };
+
+    const atualizarFonteOms = (texto) => {
+        document.querySelectorAll('.om-source-text').forEach(el => {
+            el.textContent = texto;
+        });
+    };
+
+    const ensureOmsCache = async (inputEl) => {
+        if (Array.isArray(omsCache) && omsCache.length) return omsCache;
+
+        const parsed = parseOmsAttr(inputEl || document.querySelector('.om-input'));
+        omsCache = Array.isArray(parsed) ? parsed : [];
+        atualizarTextoQuantidadeOms();
+        atualizarFonteOms(`Fonte: Tabela de Correspondência carregada do servidor | Total: ${omsCache.length}`);
+        return omsCache;
+    };
+    
+    // Configurar data atual
+    const hoje = new Date().toISOString().split('T')[0];
+    document.getElementById('data_solicitacao').value = hoje;
+
+    function alternarDestinatarioColog() {
+        const modalidadeSelect = document.getElementById('modalidade');
+        const destinatarioSection = document.getElementById('destinatario-colog-section');
+        const destinatarioSelect = document.getElementById('destinatario_colog');
+
+        if (!modalidadeSelect || !destinatarioSection) return;
+
+        if (modalidadeSelect.value === 'Transferência Interna COLOG') {
+            destinatarioSection.style.display = 'block';
+        } else {
+            destinatarioSection.style.display = 'none';
+            if (destinatarioSelect) {
+                destinatarioSelect.value = '';
+            }
+        }
+    }
+
+    // Função para verificar se há finalidades PASA-DEC ou Mnt OP-DEC
+    function verificarFinalidadesDEC() {
+        const finalidadesDEC = ['PASA-DEC', 'Mnt OP-DEC', 'Câmaras frigoríficas'];
+        let possuiFinalidadeDEC = false;
+        
+        // Verificar todos os selects de finalidade
+        document.querySelectorAll('.finalidade-nd-input').forEach(select => {
+            if (finalidadesDEC.includes(select.value)) {
+                possuiFinalidadeDEC = true;
+            }
+        });
+        
+        // Mostrar/ocultar seção específica
+        const camposDecSection = document.getElementById('campos-dec-section');
+        if (possuiFinalidadeDEC) {
+            camposDecSection.style.display = 'block';
+            // Tornar campos obrigatórios
+            document.getElementById('tem_fsv').required = true;
+        } else {
+            camposDecSection.style.display = 'none';
+            // Remover obrigatoriedade
+            document.getElementById('tem_fsv').required = false;
+            document.getElementById('diex_dom').required = false;
+            document.getElementById('nr_opus').required = false;
+        }
+        
+        return possuiFinalidadeDEC;
+    }
+
+    // Função para formatar valor como moeda brasileira
+    function formatarMoeda(valor) {
+        if (!valor) return '0,00';
+        
+        // Converte para número
+        let numero = parseFloat(valor.toString().replace(/[^\d,-]/g, '').replace(',', '.'));
+        if (isNaN(numero)) numero = 0;
+        
+        // Formata como moeda brasileira
+        return numero.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    // Função para converter formato brasileiro para float
+    function moedaParaFloat(moeda) {
+        if (!moeda) return 0;
+        let valor = moeda.toString();
+        if (valor.includes(',')) {
+            let partes = valor.split(',');
+            partes[0] = partes[0].replace(/\./g, '');
+            valor = partes.join('.');
+        }
+        return parseFloat(valor);
+    }
+
+    // Ativar/desativar preenchimento manual do CODUG
+    function configurarCodugManual(pedidoEl) {
+        const toggle = pedidoEl.querySelector('.codug-manual-toggle');
+        const codugInput = pedidoEl.querySelector('.codug-input');
+        const siglaUgInput = pedidoEl.querySelector('.sigla-ug-input');
+        const omInput = pedidoEl.querySelector('.om-input');
+
+        const aplicarAutoCodug = () => {
+            if (!omInput) return;
+            const omsData = getCachedOms();
+            const omEncontrada = omsData.find(om => om.OM === omInput.value);
+            codugInput.value = omEncontrada ? (omEncontrada.CODUG || '') : '';
+            siglaUgInput.value = omEncontrada ? (omEncontrada.SIGLA_UG || '') : '';
+        };
+
+        const atualizarSiglaPorCodug = () => {
+            if (!toggle.checked) return;
+            if (!omInput) return;
+            const omsData = getCachedOms();
+            const codugValor = (codugInput.value || '').trim();
+            const omPorCodug = omsData.find(om => (om.CODUG || '').toString() === codugValor);
+            siglaUgInput.value = omPorCodug ? (omPorCodug.SIGLA_UG || '') : '';
+        };
+
+        const atualizarEstado = () => {
+            if (toggle.checked) {
+                codugInput.readOnly = false;
+                codugInput.style.backgroundColor = '';
+                atualizarSiglaPorCodug();
+            } else {
+                codugInput.readOnly = true;
+                codugInput.style.backgroundColor = '#f8f9fa';
+                aplicarAutoCodug();
+            }
+        };
+
+        toggle.addEventListener('change', atualizarEstado);
+        codugInput.addEventListener('input', atualizarSiglaPorCodug);
+        atualizarEstado();
+
+        return { aplicarAutoCodug };
+    }
+
+    // Sistema de autocomplete melhorado para OMs
+    async function inicializarAutocompleteOM(omInput) {
+        const omsData = await ensureOmsCache(omInput);
+
+        const encontrarPorValor = (valor) => {
+            const termo = (valor || '').trim().toLowerCase();
+            const termoUpper = (valor || '').trim().toUpperCase();
+            if (!termo) return null;
+            return getCachedOms().find(om =>
+                (om.OM || '').toLowerCase() === termo ||
+                (om.OM || '').toString().trim().toUpperCase() === termoUpper ||
+                (om.CODUG || '').toString() === termo ||
+                (om.CODOM || '').toString() === termo
+            );
+        };
+        
+        // Criar datalist dinâmico se não existir
+        let datalist = document.getElementById('oms-list-dynamic');
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'oms-list-dynamic';
+            document.body.appendChild(datalist);
+        }
+
+        // Preencher datalist com todas as OMs
+        datalist.innerHTML = '';
+        getCachedOms().forEach(om => {
+            const option = document.createElement('option');
+            option.value = om.OM;
+            option.setAttribute('data-codom', om.CODOM);
+            option.setAttribute('data-codug', om.CODUG);
+            option.setAttribute('data-sigla', om.SIGLA_UG);
+            option.label = `${om.OM} · CODOM ${om.CODOM || ''} · CODUG ${om.CODUG || ''}`;
+            datalist.appendChild(option);
+        });
+
+        // Vincular datalist ao input
+        omInput.setAttribute('list', 'oms-list-dynamic');
+
+        const preencherCamposOm = (selectedValue, omEncontrada) => {
+            const parent = omInput.closest('.pedido-item');
+            if (!parent) return;
+            const codomInput = parent.querySelector('.codom-input');
+            const codugInput = parent.querySelector('.codug-input');
+            const siglaUgInput = parent.querySelector('.sigla-ug-input');
+            const codugToggle = parent.querySelector('.codug-manual-toggle');
+
+            if (omEncontrada) {
+                codomInput.value = omEncontrada.CODOM || '';
+                if (!codugToggle || !codugToggle.checked) {
+                    codugInput.value = omEncontrada.CODUG || '';
+                    siglaUgInput.value = omEncontrada.SIGLA_UG || '';
+                } else if ((codugInput.value || '').trim() === (omEncontrada.CODUG || '').toString()) {
+                    siglaUgInput.value = omEncontrada.SIGLA_UG || '';
+                }
+            } else {
+                codomInput.value = '';
+                if (!codugToggle || !codugToggle.checked) {
+                    codugInput.value = '';
+                    siglaUgInput.value = '';
+                }
+            }
+        };
+
+        const aplicarSelecaoLocal = (selectedValue) => {
+            const option = Array.from(datalist.options).find(opt => opt.value === selectedValue);
+            const fromOption = option ? {
+                CODOM: option.getAttribute('data-codom') || '',
+                CODUG: option.getAttribute('data-codug') || '',
+                SIGLA_UG: option.getAttribute('data-sigla') || '',
+                OM: selectedValue
+            } : null;
+            const omEncontrada = fromOption || encontrarPorValor(selectedValue);
+            preencherCamposOm(selectedValue, omEncontrada);
+        };
+
+        const aplicarSelecaoServidor = async (selectedValue) => {
+            aplicarSelecaoLocal(selectedValue);
+        };
+
+        omInput.addEventListener('input', function() {
+            const parent = omInput.closest('.pedido-item');
+            if (!parent) return;
+            const codomInput = parent.querySelector('.codom-input');
+            const codugInput = parent.querySelector('.codug-input');
+            const siglaUgInput = parent.querySelector('.sigla-ug-input');
+            const codugToggle = parent.querySelector('.codug-manual-toggle');
+            if (codomInput) codomInput.value = '';
+            if (!codugToggle || !codugToggle.checked) {
+                if (codugInput) codugInput.value = '';
+                if (siglaUgInput) siglaUgInput.value = '';
+            }
+        });
+
+        omInput.addEventListener('change', function() {
+            aplicarSelecaoServidor(this.value);
+        });
+
+        omInput.addEventListener('blur', function() {
+            aplicarSelecaoServidor(this.value);
+        });
+
+        if ((omInput.value || '').trim()) {
+            aplicarSelecaoServidor(omInput.value);
+        }
+
+        // Busca em tempo real na tabela local oficial (data-oms)
+        omInput.addEventListener('keyup', async function(e) {
+            if (e.key.length === 1 || e.key === 'Backspace' || e.key === 'Delete') {
+                const termo = (this.value || '').toLowerCase();
+                const resultados = getCachedOms().filter(om =>
+                    (om.OM || '').toLowerCase().includes(termo)
+                    || (om.CODOM || '').toString().includes(termo)
+                    || (om.CODUG || '').toString().includes(termo)
+                ).slice(0, 20);
+                datalist.innerHTML = '';
+                resultados.forEach(om => {
+                    const option = document.createElement('option');
+                    option.value = om.OM;
+                    option.setAttribute('data-codom', om.CODOM);
+                    option.setAttribute('data-codug', om.CODUG);
+                    option.setAttribute('data-sigla', om.SIGLA_UG);
+                    option.label = `${om.OM} · CODOM ${om.CODOM || ''} · CODUG ${om.CODUG || ''}`;
+                    datalist.appendChild(option);
+                });
+            }
+        });
+    }
+
+    // Função para criar um item de ND com finalidade
+    function createNdItem(pedidoIndex, ndIndex) {
+        const ndItem = document.createElement('div');
+        ndItem.className = 'nd-item row mb-2';
+        ndItem.innerHTML = `
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label>ND:</label>
+                    <select class="form-control nd-select" name="nd[${pedidoIndex}][]" required>
+                        <option value="">Selecione o ND</option>
+                        {% for nd in nd_possiveis %}
+                        <option value="{{ nd }}">{{ nd }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Finalidade:</label>
+                    <select class="form-control finalidade-nd-input" name="finalidade_nd[${pedidoIndex}][]" required>
+                        <option value="">Selecione a finalidade</option>
+                        {% for finalidade in finalidades %}
+                        <option value="{{ finalidade }}">{{ finalidade }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label>Valor Solicitado (R$):</label>
+                    <input type="text" class="form-control valor-solicitado-input" name="valor_solicitado[${pedidoIndex}][]" placeholder="0,00" required>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex flex-column">
+                <div class="form-group mb-2">
+                    <label>Valor Aprovado (R$):</label>
+                    <input type="text" class="form-control valor-aprovado-input" name="valor_aprovado[${pedidoIndex}][]" placeholder="0,00">
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-nd align-self-start" title="Remover ND">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        return ndItem;
+    }
+
+    // Adicionar novo pedido (OM)
+    document.getElementById('add-pedido').addEventListener('click', function() {
+        pedidoCount++;
+        const container = document.getElementById('pedidos-container');
+        const template = container.querySelector('.pedido-item');
+        const newPedido = template.cloneNode(true);
+        
+        // Atualizar índice do pedido
+        const pedidoIndex = pedidoCount;
+        newPedido.setAttribute('data-pedido-index', pedidoIndex);
+        newPedido.querySelector('.card-header h6').textContent = `OM ${pedidoCount + 1}`;
+        
+        // Limpar campos da OM
+        const omInput = newPedido.querySelector('.om-input');
+        omInput.value = '';
+        newPedido.querySelector('.codom-input').value = '';
+        newPedido.querySelector('.codug-input').value = '';
+        newPedido.querySelector('.sigla-ug-input').value = '';
+        const descOmInput = newPedido.querySelector('.descricao-om-input');
+        if (descOmInput) descOmInput.value = '';
+        const toggle = newPedido.querySelector('.codug-manual-toggle');
+        if (toggle) {
+            toggle.checked = false;
+            const label = newPedido.querySelector('label[for^="codugManual-"]');
+            const toggleId = `codugManual-${pedidoIndex}`;
+            toggle.id = toggleId;
+            if (label) label.setAttribute('for', toggleId);
+        }
+        
+        // Atualizar índices nos campos de ND
+        const ndsContainer = newPedido.querySelector('.nds-container');
+        const addNdBtn = newPedido.querySelector('.add-nd');
+        
+        // Atualizar índice do botão de adicionar ND
+        addNdBtn.setAttribute('data-pedido-index', pedidoIndex);
+        
+        // Limpar e atualizar todos os campos de ND
+        ndsContainer.innerHTML = '';
+        const firstNd = createNdItem(pedidoIndex, 0);
+        ndsContainer.appendChild(firstNd);
+        
+        // Mostrar botão de remover
+        newPedido.querySelector('.remove-pedido').style.display = 'block';
+        
+        container.appendChild(newPedido);
+        
+        // Inicializar autocomplete para o novo campo OM
+        inicializarAutocompleteOM(omInput);
+        configurarCodugManual(newPedido);
+        
+        console.log(`✅ Nova OM adicionada com índice: ${pedidoIndex}`);
+    });
+
+    // Inicializar autocomplete para o primeiro campo OM
+    const primeiroOmInput = document.querySelector('.om-input');
+    if (primeiroOmInput) {
+        ensureOmsCache(primeiroOmInput).then(() => {
+            inicializarAutocompleteOM(primeiroOmInput);
+            const primeiroPedido = primeiroOmInput.closest('.pedido-item');
+            if (primeiroPedido) {
+                configurarCodugManual(primeiroPedido);
+            }
+        });
+    }
+
+    // Adicionar ND a um pedido específico
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-nd')) {
+            const pedidoIndex = e.target.getAttribute('data-pedido-index');
+            const container = e.target.previousElementSibling;
+            const ndItems = container.querySelectorAll('.nd-item');
+            const ndIndex = ndItems.length;
+            
+            const newNd = createNdItem(pedidoIndex, ndIndex);
+            container.appendChild(newNd);
+            
+            console.log(`✅ Novo ND adicionado para OM índice: ${pedidoIndex}`);
+        } else if (e.target.classList.contains('remove-nd') || e.target.closest('.remove-nd')) {
+            const btn = e.target.closest('.remove-nd');
+            const ndRow = btn.closest('.nd-item');
+            const container = ndRow.parentElement;
+            const total = container.querySelectorAll('.nd-item').length;
+            if (total > 1) {
+                ndRow.remove();
+            }
+        }
+        
+        // Remover pedido
+        if (e.target.classList.contains('remove-pedido')) {
+            const pedidos = document.querySelectorAll('.pedido-item');
+            if (pedidos.length > 1) {
+                e.target.closest('.pedido-item').remove();
+                // Reorganizar números das OMs
+                document.querySelectorAll('.pedido-item').forEach((item, index) => {
+                    item.querySelector('.card-header h6').textContent = `OM ${index + 1}`;
+                });
+                console.log('❌ OM removida');
+            }
+        }
+    });
+
+    // Adicionar eventos para formatação em tempo real nos campos de valor
+    document.addEventListener('blur', function(e) {
+        if (e.target.classList.contains('valor-solicitado-input') || e.target.classList.contains('valor-aprovado-input')) {
+            const valorFormatado = formatarMoeda(e.target.value);
+            e.target.value = valorFormatado;
+        }
+    });
+
+    // Monitorar mudanças nas finalidades para mostrar/ocultar campos DEC
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('finalidade-nd-input')) {
+            verificarFinalidadesDEC();
+            
+            const finalidade = e.target.value;
+            const piPadrao = {
+                'Quantitativo de Rancho (QR)': 'E6SUSOLA1QR',
+                'Quantitativo de Subsistência (QS)': 'E6SUSOLA2QS',
+                'Reserva Regional (RR)': 'E6SUPLJA3RR',
+                'Alimentação em Campanha': ['E6SUPLJA4QS', 'E6SUSOLA4QR'],
+                'PASA': 'E6SUSOLA5PA',
+                'Manutenção de Órgão Provedor': 'E6SUSOLA6OP',
+                'Hub Logístico': 'E6SUSOLA2QS',
+                'Remanejamento': '212BDETAL',
+                'Câmaras frigoríficas': 'E6SUSOLA5CF',
+                'PASA-DEC': 'E6SUSOLA7PA',
+                'Mnt OP-DEC': 'E6SUSOLA8OP',
+                'Publicações': 'E6SUSOLPUBL',
+                'Diárias': 'E6SUSOLDIAR',
+                'Passagens': 'E6SUSOLPASS',
+                'Solenidades': 'E6SUSOLSOLE',
+                'Outros': 'E6SUSOLOUTROS'
+            }[finalidade];
+
+            if (piPadrao) {
+                const ndItem = e.target.closest('.nd-item');
+                if (finalidade === 'Alimentação em Campanha' && Array.isArray(piPadrao)) {
+                    // Se for Alimentação em Campanha, mostrar select para PI
+                    if (ndItem) {
+                        let piSelect = ndItem.querySelector('.pi-select');
+                        if (!piSelect) {
+                            piSelect = document.createElement('select');
+                            piSelect.className = 'form-control pi-select mt-1';
+                            piSelect.name = 'pi_alimentacao_campanha[]';
+                            piPadrao.forEach(function(pi) {
+                                const opt = document.createElement('option');
+                                opt.value = pi;
+                                opt.textContent = pi;
+                                piSelect.appendChild(opt);
+                            });
+                            e.target.parentNode.appendChild(piSelect);
+                        }
+                        // Remove info textual se existir
+                        let piInfo = ndItem.querySelector('.pi-info');
+                        if (piInfo) piInfo.remove();
+                    }
+                } else {
+                    // Caso padrão: mostra info textual
+                    if (ndItem) {
+                        // Criar ou atualizar um elemento para mostrar o PI calculado
+                        let piInfo = ndItem.querySelector('.pi-info');
+                        if (!piInfo) {
+                            piInfo = document.createElement('small');
+                            piInfo.className = 'form-text text-muted pi-info';
+                            piInfo.style.fontSize = '0.75rem';
+                            piInfo.style.fontWeight = '500';
+                            piInfo.style.color = '#28a745';
+                            e.target.parentNode.appendChild(piInfo);
+                        }
+                        piInfo.textContent = `PI calculado: ${piPadrao}`;
+                        // Remove select se existir
+                        let piSelect = ndItem.querySelector('.pi-select');
+                        if (piSelect) piSelect.remove();
+                    }
+                }
+            } else {
+                // Limpar informação do PI se não houver correspondência
+                const ndItem = e.target.closest('.nd-item');
+                if (ndItem) {
+                    const piInfo = ndItem.querySelector('.pi-info');
+                    if (piInfo) piInfo.remove();
+                    const piSelect = ndItem.querySelector('.pi-select');
+                    if (piSelect) piSelect.remove();
+                    if (piInfo) {
+                        piInfo.textContent = 'PI: A definir';
+                        piInfo.style.color = '#dc3545';
+                    }
+                }
+            }
+        }
+    });
+
+    // Validar campos FSTVE e DIEx DOM
+    document.getElementById('tem_fsv').addEventListener('change', function() {
+        const diexDomInput = document.getElementById('diex_dom');
+        const nrOpusInput = document.getElementById('nr_opus');
+        if (this.value === 'sim') {
+            diexDomInput.required = true;
+            diexDomInput.disabled = false;
+            nrOpusInput.required = true;
+        } else {
+            diexDomInput.required = false;
+            diexDomInput.disabled = true;
+            diexDomInput.value = '';
+            // Para Câmaras frigoríficas, OPUS nunca é required, para as outras só required se FSTVE=sim
+            const finalidadeInputs = document.querySelectorAll('.finalidade-nd-input');
+            let isCamaraFrigorifica = false;
+            finalidadeInputs.forEach(select => {
+                if (select.value === 'Câmaras frigoríficas') {
+                    isCamaraFrigorifica = true;
+                }
+            });
+            if (isCamaraFrigorifica) {
+                nrOpusInput.required = false;
+            } else {
+                nrOpusInput.required = false;
+            }
+        }
+    });
+
+    const modalidadeSelect = document.getElementById('modalidade');
+    if (modalidadeSelect) {
+        modalidadeSelect.addEventListener('change', alternarDestinatarioColog);
+        alternarDestinatarioColog();
+    }
+
+    // Debug: mostrar dados do formulário antes do envio
+    document.getElementById('formSolicitacao').addEventListener('submit', function(e) {
+        // Verificar validações específicas para PASA-DEC, Mnt OP-DEC e Câmaras frigoríficas
+        const possuiFinalidadeDEC = verificarFinalidadesDEC();
+        if (possuiFinalidadeDEC) {
+            const temFsv = document.getElementById('tem_fsv').value;
+            const diexDom = document.getElementById('diex_dom').value;
+            const nrOpus = document.getElementById('nr_opus').value;
+            // Verifica se alguma finalidade é PASA-DEC, Mnt OP-DEC ou Câmaras frigoríficas
+            let isCamaraFrigorifica = false;
+            document.querySelectorAll('.finalidade-nd-input').forEach(select => {
+                if (select.value === 'Câmaras frigoríficas') {
+                    isCamaraFrigorifica = true;
+                }
+            });
+            if (!temFsv) {
+                alert('ERRO: Para finalidades PASA-DEC, Mnt OP-DEC ou Câmaras frigoríficas, é obrigatório informar se possui FSTVE!');
+                e.preventDefault();
+                return;
+            }
+            if (temFsv === 'sim' && !diexDom.trim()) {
+                alert('ERRO: Quando possui FSTVE, é obrigatório informar o DIEx DOM!');
+                e.preventDefault();
+                return;
+            }
+            // OPUS obrigatório apenas se FSTVE=sim para PASA-DEC/Mnt OP-DEC/Câmaras frigoríficas
+            if (temFsv === 'sim' && !nrOpus.trim()) {
+                alert('ERRO: Quando possui FSTVE, é obrigatório informar o Nr OPUS!');
+                e.preventDefault();
+                return;
+            }
+        }
+        
+        // Corrigir conversão: garantir que valores sejam enviados no formato correto
+        document.querySelectorAll('.valor-solicitado-input, .valor-aprovado-input').forEach(input => {
+            let valor = input.value;
+            if (valor && typeof valor === 'string') {
+                // Remove espaços e R$
+                valor = valor.replace(/R\$|\s/g, '');
+                
+                // Formato brasileiro com separador de milhar e decimal: 14.000,00 ou 14000,00
+                if (valor.includes(',')) {
+                    // Remove pontos de milhar e troca vírgula por ponto
+                    valor = valor.replace(/\./g, '').replace(',', '.');
+                }
+                // Senão, assume que já está no formato correto (14000.00 ou 14000)
+                
+                // Garante duas casas decimais
+                const floatVal = parseFloat(valor);
+                if (!isNaN(floatVal)) {
+                    input.value = floatVal.toFixed(2);
+                } else {
+                    input.value = '0.00';
+                }
+            } else if (!valor) {
+                input.value = '0.00';
+            }
+        });
+        
+        console.log('=== DADOS DO FORMULÁRIO ANTES DO ENVIO ===');
+        
+        const formData = new FormData(this);
+        
+        console.log('📋 TODOS OS DADOS DO FORMULÁRIO:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+        
+        console.log('📊 RESUMO POR OM:');
+        const oms = formData.getAll('om[]');
+        const codoms = formData.getAll('codom[]');
+        const codugs = formData.getAll('codug[]');
+        const siglas = formData.getAll('sigla_ug[]');
+        
+        for (let i = 0; i < oms.length; i++) {
+            if (oms[i]) {
+                const nds = formData.getAll(`nd[${i}][]`);
+                const finalidades = formData.getAll(`finalidade_nd[${i}][]`);
+                const valoresSolicitados = formData.getAll(`valor_solicitado[${i}][]`);
+                const valoresAprovados = formData.getAll(`valor_aprovado[${i}][]`);
+                
+                console.log(`OM ${i}:`, {
+                    om: oms[i],
+                    codom: codoms[i],
+                    codug: codugs[i],
+                    sigla: siglas[i],
+                    nds: nds,
+                    finalidades: finalidades,
+                    valoresSolicitados: valoresSolicitados,
+                    valoresAprovados: valoresAprovados
+                });
+                
+                // Validar se há NDs
+                if (nds.length === 0 || !nds[0]) {
+                    alert('ERRO: Nenhum ND foi preenchido para a OM: ' + oms[i]);
+                    e.preventDefault();
+                    return;
+                }
+
+                // Validar se todas as finalidades estão preenchidas
+                for (let j = 0; j < nds.length; j++) {
+                    if (!finalidades[j] || !finalidades[j].trim()) {
+                        alert('ERRO: Todas as finalidades devem ser preenchidas! Verifique o ND ' + (j + 1) + ' da OM: ' + oms[i]);
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            }
+        }
+        
+        console.log('==========================================');
+    });
+});
+</script>
+
+<style>
+.pedido-item {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.nd-item {
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 3px;
+    border: 1px solid #e9ecef;
+}
+
+/* Estilo para o autocomplete */
+input[list] {
+    background-image: none; /* Remove seta padrão */
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.card-header.bg-light {
+    background-color: #f8f9fa !important;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+.pi-info {
+    display: block;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+.form-check-input.codug-manual-toggle {
+    cursor: pointer;
+}
+
+/* Estilo para a seção DEC */
+#campos-dec-section {
+    border-left: 4px solid #17a2b8;
+}
+</style>
+{% endblock %}

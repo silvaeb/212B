@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Notas de Crédito PDR Log - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Notas de Crédito (PDR Log){% endblock %}
+
+{% block content %}
+<div class="row">
+    {% if current_user.nivel_acesso == 'admin' %}
+    <div class="col-12 mb-2">
+        <form method="post" action="{{ url_for('atualizar_status_ncs') }}" onsubmit="return confirm('Deseja realmente atualizar o status de todas as NCs preenchidas automaticamente?');">
+            <button type="submit" class="btn btn-warning">
+                <i class="fas fa-sync-alt"></i> Atualizar Status das NCs Preenchidas Automaticamente
+            </button>
+        </form>
+    </div>
+    {% endif %}
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label for="om" class="form-label">OM Solicitante</label>
+                            <input type="text" class="form-control" id="om" name="om" value="{{ om_filter }}" placeholder="Ex: 1º GAAAe">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="filtro_vazios" class="form-label">Somente NC sem REF SISNC/NC SIAFI</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filtro_vazios" name="filtro_vazios" value="1" {% if filtro_vazios %}checked{% endif %}>
+                                <label class="form-check-label" for="filtro_vazios">Exibir apenas NCs sem REF SISNC e NC SIAFI</label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="nd" class="form-label">ND</label>
+                            <select class="form-control" id="nd" name="nd">
+                                <option value="">Todos</option>
+                                {% for codigo in nd_opcoes %}
+                                <option value="{{ codigo }}" {% if nd_filter == codigo %}selected{% endif %}>{{ codigo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="pi" class="form-label">PI</label>
+                            <select class="form-control" id="pi" name="pi">
+                                <option value="">Todos</option>
+                                {% for codigo in pi_opcoes %}
+                                <option value="{{ codigo }}" {% if pi_filter == codigo %}selected{% endif %}>{{ codigo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="nc_siafi" class="form-label">NC SIAFI</label>
+                            <input type="text" class="form-control" id="nc_siafi" name="nc_siafi" value="{{ nc_siafi_filter }}" placeholder="Ex: 400001">
+                        </div>
+                        <div class="col-md-1">
+                            <label for="codug" class="form-label">CODUG</label>
+                            <select class="form-control" id="codug" name="codug">
+                                <option value="">Todos</option>
+                                {% for codigo in codug_opcoes %}
+                                <option value="{{ codigo }}" {% if codug_filter == codigo %}selected{% endif %}>{{ codigo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label for="codom" class="form-label">CODOM</label>
+                            <select class="form-control" id="codom" name="codom">
+                                <option value="">Todos</option>
+                                {% for codigo in codom_opcoes %}
+                                <option value="{{ codigo }}" {% if codom_filter == codigo %}selected{% endif %}>{{ codigo }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="status" class="form-label">Status</label>
+                            <select class="form-control" id="status" name="status">
+                                <option value="">Todos</option>
+                                <option value="gerar NC" {% if status_filter == 'gerar NC' %}selected{% endif %}>gerar NC</option>
+                                <option value="NC SIAFI gerada" {% if status_filter == 'NC SIAFI gerada' %}selected{% endif %}>NC SIAFI gerada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="incluir_duplicadas" name="incluir_duplicadas" value="1" {% if incluir_duplicadas %}checked{% endif %}>
+                                <label class="form-check-label" for="incluir_duplicadas">Incluir duplicadas</label>
+                            </div>
+                        </div>
+                        <div class="col-md-12 d-flex gap-2 mt-2">
+                            <button type="submit" class="btn btn-primary">Filtrar</button>
+                            <a href="{{ url_for('listar_ncs') }}" class="btn btn-secondary">Limpar</a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Dados agrupados por OM + PI + ND</h6>
+                <span class="badge {% if incluir_duplicadas %}bg-warning text-dark{% else %}bg-dark{% endif %}">{{ ncs|length }} grupo(s){% if incluir_duplicadas %} | com duplicadas{% else %} | sem duplicadas{% endif %}</span>
+            </div>
+            <div class="card-body">
+                {% if ncs %}
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>OM Solicitante</th>
+                                <th>CODOM</th>
+                                <th>CODUG</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th class="text-end">Valor Total</th>
+                                <th>Qtd. Solicitações</th>
+                                <th>NC SIAFI</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nc in ncs %}
+                            <tr>
+                                <td><strong>{{ nc.om_solicitante }}</strong></td>
+                                <td>{{ nc.codom }}</td>
+                                <td>{{ nc.codug }}</td>
+                                <td>{{ nc.pi }}</td>
+                                <td>{{ nc.nd }}</td>
+                                <td class="text-end fw-bold">{{ nc.valor_total|format_currency }}</td>
+                                <td>
+                                    <a href="{{ url_for('detalhes_ncs_pdr_grupo', om=nc.om_solicitante, pi=nc.pi, nd=nc.nd, incluir_duplicadas='1' if incluir_duplicadas else '0') }}" class="btn btn-sm btn-outline-primary">
+                                        {{ nc.quantidade_solicitacoes }}
+                                    </a>
+                                </td>
+                                <td>{{ nc.nc_siafi or '--' }}</td>
+                                <td>
+                                    <span class="badge {% if nc.status == 'NC SIAFI gerada' %}bg-success{% else %}bg-warning text-dark{% endif %}">
+                                        {{ nc.status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nenhum grupo encontrado</h5>
+                    <p class="text-muted">Ajuste os filtros ou valide os dados das Solicitações do PDR Log.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

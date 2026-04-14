@@ -1,0 +1,129 @@
+/* Estilos personalizados para o sistema Extra PDRLOG */
+
+.sidebar {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.sidebar .nav-link {
+    color: #333;
+    padding: 10px 15px;
+    margin: 2px 0;
+    border-radius: 5px;
+}
+
+.sidebar .nav-link:hover {
+    background-color: #e9ecef;
+}
+
+.sidebar .nav-link.active {
+    background-color: #007bff;
+    color: white;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e3e6f0;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #6c757d;
+}
+
+.badge {
+    font-size: 0.75em;
+    font-weight: 600;
+}
+
+/* Status colors */
+.status-aguardando-análise { background-color: #f39c12; color: white; }
+.status-em-análise { background-color: #3498db; color: white; }
+.status-aprovado-cmt-log { background-color: #27ae60; color: white; }
+.status-aprovado-parcialmente { background-color: #2ecc71; color: white; }
+.status-negado-cmt-log { background-color: #e74c3c; color: white; }
+.status-arquivado { background-color: #95a5a6; color: white; }
+.status-aguardando-despacho { background-color: #9b59b6; color: white; }
+.status-devolvido-para-correções { background-color: #e67e22; color: white; }
+.status-pendente { background-color: #f39c12; color: white; }
+.status-processada { background-color: #27ae60; color: white; }
+.status-cancelada { background-color: #e74c3c; color: white; }
+.status-convertido-em-nc { background-color: #27ae60; color: white; }
+
+/* Form styles */
+.pedido-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.35rem;
+    margin-bottom: 1rem;
+}
+
+.nd-item {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 0.25rem;
+    margin-bottom: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.form-control[readonly] {
+    background-color: #f8f9fa !important;
+    cursor: not-allowed;
+}
+
+/* Alert improvements */
+.alert {
+    border: none;
+    border-left: 4px solid;
+}
+
+.alert-info {
+    border-left-color: #17a2b8;
+}
+
+.alert-success {
+    border-left-color: #28a745;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.alert-danger {
+    border-left-color: #dc3545;
+}
+
+/* Dashboard cards */
+.card.border-left-primary {
+    border-left: 0.25rem solid #4e73df !important;
+}
+
+.card.border-left-success {
+    border-left: 0.25rem solid #1cc88a !important;
+}
+
+.card.border-left-info {
+    border-left: 0.25rem solid #36b9cc !important;
+}
+
+.card.border-left-warning {
+    border-left: 0.25rem solid #f6c23e !important;
+}
+
+.card.border-left-danger {
+    border-left: 0.25rem solid #e74a3b !important;
+}
+
+.card.border-left-secondary {
+    border-left: 0.25rem solid #858796 !important;
+}
+
+.card.border-left-dark {
+    border-left: 0.25rem solid #5a5c69 !important;
+}

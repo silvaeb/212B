@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios - Sistema de Gestão da Qualidade{% endblock %}
+{% block page_title %}Relatórios{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Estatísticas Gerais</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white mb-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total de NCs</div>
+                                        <div class="h5 mb-0">{{ total_ncs }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-clipboard-list fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white mb-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-xs font-weight-bold text-uppercase mb-1">NCs Último Mês</div>
+                                        <div class="h5 mb-0">{{ ncs_ultimo_mes }}</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-calendar fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white mb-4">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <div class="text-xs font-weight-bold text-uppercase mb-1">Exportar Dados</div>
+                                        <div class="h5 mb-0">CSV</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-download fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros para Exportação</h6>
+            </div>
+            <div class="card-body">
+                <form id="formExportar" method="GET" action="{{ url_for('exportar_csv') }}">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="status">Status:</label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="">Todos os Status</option>
+                                    {% for status in status_list %}
+                                    <option value="{{ status }}">{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="finalidade">Finalidade:</label>
+                                <select class="form-control" id="finalidade" name="finalidade">
+                                    <option value="">Todas as Finalidades</option>
+                                    {% for finalidade in finalidades %}
+                                    <option value="{{ finalidade }}">{{ finalidade }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="tipo">Tipo:</label>
+                                <select class="form-control" id="tipo" name="tipo">
+                                    <option value="">Todos os Tipos</option>
+                                    <option value="Solicitações">Solicitações</option>
+                                    <option value="Notas de Crédito">Notas de Crédito</option>
+                                    <option value="PRO">PRO</option>
+                                    <option value="Transferência Interna COLOG">Transferência Interna COLOG</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="data_inicio">Data Início:</label>
+                                <input type="date" class="form-control" id="data_inicio" name="data_inicio">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="data_fim">Data Fim:</label>
+                                <input type="date" class="form-control" id="data_fim" name="data_fim">
+                            </div>
+                        </div>
+                        <div class="col-md-9 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-download"></i> Exportar para CSV
+                            </button>
+                            <a href="#" id="btnExportarExcel" class="btn btn-success ml-2">
+                                <i class="fas fa-file-excel"></i> Exportar para Excel
+                            </a>
+                        </div>
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const btnExcel = document.getElementById('btnExportarExcel');
+                        btnExcel.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const form = document.getElementById('formExportar');
+                            const params = new URLSearchParams(new FormData(form)).toString();
+                            window.location.href = '{{ url_for('exportar_ncs_excel') }}?' + params;
+                        });
+                    });
+                    </script>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Relatórios Rápidos</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('exportar_csv') }}?status=Aberta" class="btn btn-outline-danger btn-block">
+                            <i class="fas fa-exclamation-circle"></i> NCs Abertas
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('exportar_csv') }}?status=Concluída" class="btn btn-outline-success btn-block">
+                            <i class="fas fa-check-circle"></i> NCs Concluídas
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('exportar_ncs_excel') }}" class="btn btn-outline-primary btn-block">
+                            <i class="fas fa-download"></i> Todas as NCs
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adicionar estas seções ao relatorios.html existente -->
+
+<!-- Nova seção para relatórios específicos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Relatórios Específicos</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('relatorio_despacho_cmt') }}" class="btn btn-outline-warning btn-block">
+                            <i class="fas fa-clipboard-check"></i> Despacho com Cmt
+                        </a>
+                        <small class="text-muted">Solicitações aguardando despacho</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('exportar_excel') }}?status=Aguardando%20Análise" class="btn btn-outline-info btn-block">
+                            <i class="fas fa-clock"></i> Aguardando Análise
+                        </a>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <a href="{{ url_for('exportar_excel') }}" class="btn btn-outline-primary btn-block">
+                            <i class="fas fa-download"></i> Todas as Solicitações
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Preencher datas padrão (últimos 30 dias)
+document.addEventListener('DOMContentLoaded', function() {
+    const hoje = new Date();
+    const umMesAtras = new Date();
+    umMesAtras.setMonth(umMesAtras.getMonth() - 1);
+    
+    document.getElementById('data_inicio').value = umMesAtras.toISOString().split('T')[0];
+    document.getElementById('data_fim').value = hoje.toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

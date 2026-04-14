@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}PROs - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Previsões de Recurso Orçamentário (PRO){% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="numero">Nº PRO:</label>
+                                <input type="text" class="form-control" id="numero" name="numero" 
+                                       value="{{ numero_filter }}" placeholder="Número da PRO">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="diex">Nº DIEx:</label>
+                                <input type="text" class="form-control" id="diex" name="diex"
+                                       value="{{ diex_filter }}" placeholder="DIEx da solicitação">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="data_inicio">Data Início:</label>
+                                <input type="date" class="form-control" id="data_inicio" name="data_inicio" 
+                                       value="{{ data_inicio_filter }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="data_fim">Data Fim:</label>
+                                <input type="date" class="form-control" id="data_fim" name="data_fim" 
+                                       value="{{ data_fim_filter }}">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="cod_ug">COD UG:</label>
+                                <input type="text" class="form-control" id="cod_ug" name="cod_ug" 
+                                       value="{{ cod_ug_filter }}" placeholder="Código UG">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label for="sigla_ug">Sigla UG:</label>
+                                <input type="text" class="form-control" id="sigla_ug" name="sigla_ug" 
+                                       value="{{ sigla_ug_filter }}" placeholder="Sigla UG">
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="form-group">
+                                <label for="status">Status:</label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="">Todos</option>
+                                    {% for status in status_list %}
+                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary mr-2">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('listar_pros') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Limpar
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Lista de PROs</h6>
+                <div>
+                    <span class="badge bg-success mr-2">
+                        Total: {{ pros|length }}
+                    </span>
+                    <span class="badge bg-warning">
+                        Aguardando: {{ pros|selectattr('status', 'equalto', 'Aguardando término do processo licitatório')|list|length }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nº PRO</th>
+                                <th>Data</th>
+                                <th>COD UG</th>
+                                <th>SIGLA UG</th>
+                                <th>Solicitação Relacionada</th>
+                                <th>Nº DIEx</th>
+                                <th>Valor Solicitação</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pro in pros %}
+                            <tr>
+                                <td><strong>{{ pro.numero }}</strong></td>
+                                <td>{{ pro.data_criacao.strftime('%d/%m/%Y') if pro.data_criacao else '--' }}</td>
+                                <td>{{ pro.cod_ug or '--' }}</td>
+                                <td>{{ pro.sigla_ug or '--' }}</td>
+                                <td>
+                                    {% if pro.solicitacao_pdrlog_id %}
+                                        <a href="{{ url_for('detalhes_solicitacao', id=pro.solicitacao_pdrlog_id) }}" class="text-primary">
+                                            {{ pro.solicitacao_origem.numero if pro.solicitacao_origem else 'N/A' }}
+                                        </a>
+                                    {% else %}
+                                        <span class="text-muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ pro.solicitacao_origem.diex if pro.solicitacao_origem and pro.solicitacao_origem.diex else '--' }}</td>
+                                <td class="text-right font-weight-bold" style="white-space: nowrap;">
+                                    {% set total_ref = pro.solicitacao_origem.total_solicitado if pro.solicitacao_origem else 0 %}
+                                    {{ total_ref|format_currency }}
+                                </td>
+                                <td>
+                                    <!-- MESMA CONFIGURAÇÃO DE CORES DA LISTA DE SOLICITAÇÕES -->
+                                    <span class="badge {% if pro.status == 'Aguardando término do processo licitatório' %}bg-warning text-dark
+                                                     {% elif pro.status == 'Convertida em NC' %}bg-success text-white
+                                                     {% elif pro.status == 'Cancelada' %}bg-danger text-white
+                                                     {% elif pro.status == 'Vencida (mais de 120 dias)' %}bg-secondary text-white
+                                                     {% else %}bg-light text-dark{% endif %}">
+                                        {{ pro.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('detalhes_pro', id=pro.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if pro.status == 'Aguardando término do processo licitatório' %}
+                                        <form method="POST" action="{{ url_for('cancelar_pro', id=pro.id) }}" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" 
+                                                    onclick="return confirm('Tem certeza que deseja cancelar esta PRO?')"
+                                                    title="Cancelar PRO">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    {% if current_user and current_user.nivel_acesso == 'admin' %}
+                                        <form method="POST" action="{{ url_for('excluir_pro', id=pro.id) }}" class="d-inline" onsubmit="return confirm('Tem certeza que deseja EXCLUIR esta PRO? Esta ação é irreversível!');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger ml-1" title="Excluir PRO">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="9" class="text-center">Nenhuma PRO encontrada</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.table th {
+    font-weight: 600;
+    font-size: 0.85em;
+    background-color: #f8f9fa;
+}
+
+.table td {
+    font-size: 0.9em;
+    vertical-align: middle;
+}
+
+.badge {
+    font-weight: 500;
+    font-size: 0.8em;
+    padding: 0.4em 0.6em;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.font-weight-bold {
+    font-weight: 600 !important;
+}
+
+/* Melhorar a aparência da tabela */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.075);
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8em;
+    }
+    
+    .badge {
+        font-size: 0.7em;
+        padding: 0.3em 0.5em;
+    }
+    
+    .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+        margin-right: 2px;
+    }
+}
+
+/* Estilos para os status - MESMO PADRÃO DAS SOLICITAÇÕES */
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-primary {
+    background-color: #007bff !important;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.text-dark {
+    color: #212529 !important;
+}
+
+.text-white {
+    color: #fff !important;
+}
+
+/* Badges de contagem no header */
+.badge.bg-success {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: black !important;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    margin-right: 2px;
+}
+</style>
+{% endblock %}

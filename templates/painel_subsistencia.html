@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+
+{% block title %}Painel Subsistência - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+<style>
+.painel-subsistencia-wrapper {
+    min-height: 100vh;
+    width: 100vw;
+    background-image: linear-gradient(135deg, rgba(8, 31, 56, 0.9), rgba(4, 13, 24, 0.92)), url("{{ url_for('static', filename='img/fundo.png') }}");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.painel-subsistencia-hero {
+    background: transparent;
+    color: #fff;
+    border-radius: 16px;
+    box-shadow: 0 1.25rem 2.5rem rgba(0, 0, 0, 0.25);
+}
+
+.painel-logo {
+    height: 72px;
+    width: auto;
+}
+
+.painel-kicker {
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.painel-title {
+    font-size: clamp(1.8rem, 3vw, 2.7rem);
+    font-weight: 700;
+}
+
+.painel-description {
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 700px;
+    font-size: 1rem;
+}
+
+.loa-card {
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.09);
+    border-radius: 14px;
+    backdrop-filter: blur(4px);
+}
+
+.loa-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 600;
+}
+
+.loa-value {
+    font-size: clamp(1.5rem, 2.4vw, 2rem);
+    font-weight: 700;
+    line-height: 1.15;
+}
+
+.loa-note {
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.painel-action-card {
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 12px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+    transition: all 0.2s ease;
+}
+
+.painel-action-card-solid {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.painel-action-card:hover,
+.painel-action-card:focus {
+    transform: translateY(-2px);
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 0.75rem 1.8rem rgba(0, 0, 0, 0.2);
+}
+
+.painel-action-tag {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.72);
+    font-weight: 600;
+}
+
+.painel-action-icon {
+    font-size: 1.25rem;
+    opacity: 0.92;
+}
+
+/* Estilos para o mapa */
+.card-header .form-select {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 0.375rem 2rem 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    min-width: 150px;
+}
+
+/* Tornar o card do mapa transparente e remover fundo branco */
+.card.map-transparent { background: transparent !important; box-shadow: none !important; border: none !important; }
+.card.map-transparent .card-header, .card.map-transparent .card-body, .card.map-transparent .card-footer { background: transparent !important; border: none !important; }
+.card.map-transparent .card-body { padding: 0.5rem !important; }
+
+.card-header .d-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+#mapa-brasil {
+    border-radius: 8px;
+    min-height: 560px;
+    height: calc(100vh - 260px);
+    max-height: 840px;
+}
+/* fundo estilo mapa (imagem estática) */
+/* mapa: tamanho controlado para caber na viewport e mostrar por completo */
+#mapa-brasil { background-size: contain; background-position: center; background-repeat: no-repeat; width:100%; height:65vh !important; min-height:420px; max-height:760px; display:block; }
+
+/* remover qualquer fundo branco residual em containers pai próximos */
+.painel-subsistencia-hero .card { background: transparent !important; }
+
+/* Leaflet container transparent to avoid white background */
+.leaflet-container { background: transparent !important; }
+
+@media (max-width: 991.98px) {
+    .loa-card {
+        text-align: center;
+    }
+    
+    .card-header .d-flex {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .card-header .form-select {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="painel-subsistencia-wrapper mt-3 mt-lg-4">
+    <div class="container-fluid px-0">
+        <div class="painel-subsistencia-hero card border-0 overflow-hidden">
+            <div class="card-body p-4 p-lg-5">
+                <div class="row g-4 align-items-center">
+                    <div class="col-lg-8">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="{{ url_for('static', filename='img/COLOG.png') }}" alt="COLOG" class="painel-logo me-3">
+                            <div>
+                                <p class="painel-kicker mb-1">CHEFIA DE SUPRIMENTO • Divisão de Subsistência</p>
+                                <h2 class="painel-title mb-0">Painel Subsistência</h2>
+                            </div>
+                        </div>
+
+                        <p class="painel-description mb-0">
+                            Centro de acesso estratégico para acompanhamento das demandas e execução orçamentária.
+                        </p>
+                    </div>
+
+                    <div class="col-lg-4">
+                        <div class="loa-card p-4 text-center text-lg-start">
+                            <p class="loa-label mb-2">LOA 2026</p>
+                            <p class="loa-value mb-1">R$ 1.330.479.356,00</p>
+                            <small class="loa-note">Lei Orçamentária Anual • Dotação de referência</small>
+                        </div>
+                    </div>
+                    <!-- Totais BI DIV SUBS -->
+                    <div class="col-12 mt-3">
+                        {% if bi_totals %}
+                        <div class="row g-3">
+                            <div class="col-sm-6 col-md-3">
+                                <div class="loa-card p-3 text-center">
+                                    <p class="loa-label mb-1">Crédito disponível (UGR 160504)</p>
+                                    <p class="loa-value mb-0">R$ {{ '{:,.2f}'.format(bi_totals.get('credito_ugr_160504', bi_totals.credito_disponivel if bi_totals else 0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="loa-card p-3 text-center">
+                                    <p class="loa-label mb-1">Total Descentralizado</p>
+                                    <p class="loa-value mb-0">R$ {{ '{:,.2f}'.format(bi_totals.get('total_descentralizado', 0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="loa-card p-3 text-center">
+                                    <p class="loa-label mb-1">Crédito disponível (UGE restantes)</p>
+                                    <p class="loa-value mb-0">R$ {{ '{:,.2f}'.format(bi_totals.get('credito_uge_restantes', 0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="loa-card p-3 text-center">
+                                    <p class="loa-label mb-1">Empenhado</p>
+                                    <p class="loa-value mb-0">R$ {{ '{:,.2f}'.format(bi_totals.empenhado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="loa-card p-3 text-center">
+                                    <p class="loa-label mb-1">Liquidado</p>
+                                    <p class="loa-value mb-0">R$ {{ '{:,.2f}'.format(bi_totals.liquidado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                                </div>
+                            </div>
+                            <div class="col-sm-6 col-md-3">
+                                <div class="loa-card p-3 text-center">
+                                    <p class="loa-label mb-1">Pago</p>
+                                    <p class="loa-value mb-0">R$ {{ '{:,.2f}'.format(bi_totals.pago).replace(',', 'X').replace('.', ',').replace('X', '.') }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-muted small">Planilha BI DIV SUBS não encontrada. Envie a planilha para ativar os totais.</div>
+                        {% endif %}
+                        {% if current_user.nivel_acesso == 'admin' %}
+
+                        <!-- CARD BASE DE DADOS - AGRUPAMENTO DE FERRAMENTAS DE UPLOAD (COLAPSÁVEL) -->
+                        <div class="card mt-4" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.20); border-radius: 12px;">
+                            <div class="card-header" style="background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid rgba(255, 255, 255, 0.15); cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#baseDbCollapse" aria-expanded="false" aria-controls="baseDbCollapse">
+                                <h5 class="mb-0" style="color: #fff;">
+                                    <i class="fas fa-database me-2" style="color: #FFD600;"></i> Base de Dados
+                                    <i class="fas fa-chevron-down float-end" style="color: rgba(255, 255, 255, 0.6); transition: transform 0.2s;"></i>
+                                </h5>
+                            </div>
+                            <div class="collapse" id="baseDbCollapse">
+                                <div class="card-body" style="padding: 1.5rem;">
+                                    
+                                    <!-- Seção 0: BI DIV SUBS -->
+                                    <div class="mb-4">
+                                        <h6 class="mb-2" style="color: #fff;">
+                                            <i class="fas fa-table me-2" style="color: #87CEEB;"></i> BI DIV SUBS
+                                        </h6>
+                                        <form action="{{ url_for('painel_subsistencia') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                                            <input type="file" name="bi_file" accept=".xls,.xlsx" class="form-control form-control-sm" style="max-width:320px;">
+                                            <button class="btn btn-sm btn-primary" type="submit">Carregar</button>
+                                            <a href="{{ url_for('exportar_painel_subsistencia_excel') }}" class="btn btn-sm btn-success">
+                                                <i class="fas fa-file-excel"></i> Exportar Excel
+                                            </a>
+                                            <a href="/tabela_oms_subsistencia" class="btn btn-sm btn-outline-light">
+                                                <i class="fas fa-table"></i> Tabela OM/COD UG
+                                            </a>
+                                        </form>
+                                        <small class="text-muted d-block">Envie uma nova versão para atualizar os totais (arquivo salvo em instance/).</small>
+                                    </div>
+
+                                    <hr style="border-color: rgba(255, 255, 255, 0.15);">
+
+                                    <!-- Seção 1: NC SIAFI -->
+                                    <div class="mb-4">
+                                        <h6 class="mb-2" style="color: #fff;">
+                                            <i class="fas fa-file-upload me-2" style="color: #87CEEB;"></i> NC SIAFI
+                                        </h6>
+                                        <form action="{{ url_for('painel_subsistencia') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                                            <input type="file" name="auditoria_file" accept=".xls,.xlsx" class="form-control form-control-sm" style="max-width:320px;">
+                                            <button class="btn btn-sm btn-warning" type="submit">Carregar</button>
+                                        </form>
+                                        <small class="text-muted d-block mb-2">Separação automática por PI: PLJ → PDR Log | SOL → Extra PDR Log.</small>
+                                        {% if auditoria_upload_info %}
+                                        <div class="alert alert-info py-2 px-3 mb-0" style="background: rgba(135, 206, 235, 0.15); border: 1px solid rgba(135, 206, 235, 0.3); color: rgba(255, 255, 255, 0.9);">
+                                            <div><strong>Último upload unificado:</strong> {{ auditoria_upload_info.uploaded_at_fmt or '--' }}</div>
+                                            <div><strong>Total:</strong> {{ auditoria_upload_info.total }} | <strong>PDR Log (PLJ):</strong> {{ auditoria_upload_info.pdr }} | <strong>Extra PDR Log (SOL):</strong> {{ auditoria_upload_info.extra }}</div>
+                                            <div><strong>Coluna PI identificada:</strong> {{ auditoria_upload_info.col_pi or '--' }}</div>
+                                        </div>
+                                        {% else %}
+                                        <div class="small text-muted">Nenhum arquivo escolhido</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <hr style="border-color: rgba(255, 255, 255, 0.15);">
+
+                                    <!-- Seção 2: SISNC -->
+                                    <div class="mb-4">
+                                        <h6 class="mb-2" style="color: #fff;">
+                                            <i class="fas fa-file-upload me-2" style="color: #87CEEB;"></i> SISNC
+                                        </h6>
+                                        <form action="{{ url_for('painel_subsistencia') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                                            <input type="file" name="sisnc_file" accept=".xls,.xlsx" class="form-control form-control-sm" style="max-width:320px;">
+                                            <button class="btn btn-sm btn-info" type="submit">Carregar</button>
+                                        </form>
+                                        <small class="text-muted d-block mb-2">Separação automática por PI: PLJ → PDR Log | SOL → Extra PDR Log.</small>
+                                        {% if sisnc_upload_info %}
+                                        <div class="alert alert-info py-2 px-3 mb-0" style="background: rgba(135, 206, 235, 0.15); border: 1px solid rgba(135, 206, 235, 0.3); color: rgba(255, 255, 255, 0.9);">
+                                            <div><strong>Último upload SISNC:</strong> {{ sisnc_upload_info.uploaded_at_fmt or '--' }}</div>
+                                            <div><strong>Total:</strong> {{ sisnc_upload_info.total }} | <strong>PDR Log (PLJ):</strong> {{ sisnc_upload_info.pdr }} | <strong>Extra PDR Log (SOL):</strong> {{ sisnc_upload_info.extra }}</div>
+                                            <div><strong>Coluna PI identificada:</strong> {{ sisnc_upload_info.col_pi or '--' }}</div>
+                                        </div>
+                                        {% else %}
+                                        <div class="small text-muted">Nenhum arquivo escolhido</div>
+                                        {% endif %}
+                                    </div>
+
+                                    <hr style="border-color: rgba(255, 255, 255, 0.15);">
+
+                                    <!-- Seção 3: NE -->
+                                    <div class="mb-0">
+                                        <h6 class="mb-2" style="color: #fff;">
+                                            <i class="fas fa-file-upload me-2" style="color: #87CEEB;"></i> NE
+                                        </h6>
+                                        <form action="{{ url_for('auditoria_ne') }}" method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                                            <input type="file" name="ne_file" accept=".xls,.xlsx" class="form-control form-control-sm" style="max-width:320px;">
+                                            <button class="btn btn-sm btn-warning" type="submit">Carregar</button>
+                                        </form>
+                                        <small class="text-muted d-block">Conformidade NE × Enquadramento Despesas (PI + ND + Subitem).</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const collapseHeader = document.querySelector('[data-bs-target="#baseDbCollapse"]');
+                            const collapseElement = document.getElementById('baseDbCollapse');
+                            
+                            if (collapseElement) {
+                                collapseElement.addEventListener('show.bs.collapse', function() {
+                                    const icon = collapseHeader.querySelector('.fa-chevron-down');
+                                    if (icon) {
+                                        icon.style.transform = 'rotate(180deg)';
+                                    }
+                                });
+                                
+                                collapseElement.addEventListener('hide.bs.collapse', function() {
+                                    const icon = collapseHeader.querySelector('.fa-chevron-down');
+                                    if (icon) {
+                                        icon.style.transform = 'rotate(0deg)';
+                                    }
+                                });
+                            }
+                        });
+                        </script>
+                        {% endif %}
+                    </div>
+                </div>
+
+
+                <div class="row g-3 mt-2 mt-lg-3">
+                    <div class="col-md-6">
+                        <!-- CORREÇÃO: Link direto sem condição complexa -->
+                        <a href="{{ url_for('entrar_menu_pdr_log') }}" class="painel-action-card d-block text-decoration-none h-100">
+                            <div class="d-flex align-items-center justify-content-between p-4">
+                                <div>
+                                    <p class="painel-action-tag mb-1">MÓDULO GERENCIAL</p>
+                                    <h5 class="mb-0">PDR Log</h5>
+                                </div>
+                                <i class="fas fa-arrow-right painel-action-icon"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('entrar_menu_extra_pdr_log') }}" class="painel-action-card painel-action-card-solid d-block text-decoration-none h-100">
+                            <div class="d-flex align-items-center justify-content-between p-4">
+                                <div>
+                                    <p class="painel-action-tag mb-1">Módulo Gerencial</p>
+                                    <h5 class="mb-0">Extra PDR Log</h5>
+                                </div>
+                                <i class="fas fa-arrow-right painel-action-icon"></i>
+                            </div>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('auditoria_ne') }}" class="painel-action-card d-block text-decoration-none h-100" style="border-color:rgba(255,214,0,0.35);">
+                            <div class="d-flex align-items-center justify-content-between p-4">
+                                <div>
+                                    <p class="painel-action-tag mb-1" style="color:#FFD600;">AUDITORIA DE CONFORMIDADE</p>
+                                    <h5 class="mb-0">Notas de Empenho</h5>
+                                    <small class="text-white-50">PI × Natureza de Despesa × Subitem</small>
+                                </div>
+                                <i class="fas fa-file-contract painel-action-icon" style="color:#FFD600;"></i>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Mapa Interativo do Brasil -->
+                {% block scripts %}
+                {{ super() }}
+                <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+                <script src="{{ url_for('static', filename='js/pizza3d_subsistencia.js') }}"></script>
+                <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var pizzaData = {
+                        labels: [
+                            'Crédito disponível (UGR 160504)',
+                            'Total Descentralizado',
+                            'Crédito disponível (UGE restantes)',
+                            'Empenhado',
+                            'Liquidado',
+                            'Pago'
+                        ],
+                        values: [
+                            {{ '%.2f' % (bi_totals['credito_ugr_160504'] if bi_totals and 'credito_ugr_160504' in bi_totals else 0) }},
+                            {{ '%.2f' % (bi_totals['total_descentralizado'] if bi_totals and 'total_descentralizado' in bi_totals else 0) }},
+                            {{ '%.2f' % (bi_totals['credito_uge_restantes'] if bi_totals and 'credito_uge_restantes' in bi_totals else 0) }},
+                            {{ '%.2f' % (bi_totals['empenhado'] if bi_totals and 'empenhado' in bi_totals else 0) }},
+                            {{ '%.2f' % (bi_totals['liquidado'] if bi_totals and 'liquidado' in bi_totals else 0) }},
+                            {{ '%.2f' % (bi_totals['pago'] if bi_totals and 'pago' in bi_totals else 0) }}
+                        ]
+                    };
+                    if (pizzaData.values.reduce((a,b)=>a+b,0) > 0) {
+                        renderPizza3DSubsistencia(pizzaData);
+                    }
+                });
+                </script>
+                {% endblock %}
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <!-- Mapa de calor removido conforme solicitado -->
+                    </div>
+                </div>
+                <!-- Fim Mapa Interativo -->
+                            <!-- Bloco antigo removido: relação por PI dentro de cada GND -->
+                {% if relacao_pi_total and relacao_pi_total|length > 0 %}
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <h4 class="mb-3">Totais Gerais por PI</h4>
+                        <div class="table-responsive">
+                            <table id="tabela-pi-total" class="table table-sm table-bordered mb-0 text-white" style="color: #fff;">
+                                <thead style="background: #222;">
+                                    <tr>
+                                        <th style="color: #FFD600;">PI</th>
+                                        <th style="color: #FFD600;">Crédito Disponível UGR</th>
+                                        <th style="color: #FFD600;">Total Descentralizado</th>
+                                        <th style="color: #FFD600;">Crédito Disponível UGE</th>
+                                        <th style="color: #FFD600;">Despesas Empenhadas</th>
+                                        <th style="color: #FFD600;">Despesas Liquidadas</th>
+                                        <th style="color: #FFD600;">Despesas Pagas</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in relacao_pi_total %}
+                                    <tr>
+                                        <td style="color: #fff;">{{ row.pi }}</td>
+                                        <td style="color: #fff;">R$ {{ '{:,.2f}'.format(row.credito_disponivel_ugr).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                        <td style="color: #fff;">R$ {{ '{:,.2f}'.format(row.total_descentralizado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                        <td style="color: #fff;">R$ {{ '{:,.2f}'.format(row.credito_disponivel_uge).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                        <td style="color: #fff;">R$ {{ '{:,.2f}'.format(row.empenhado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                        <td style="color: #fff;">R$ {{ '{:,.2f}'.format(row.liquidado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                        <td style="color: #fff;">R$ {{ '{:,.2f}'.format(row.pago).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning mt-4">Nenhum dado disponível para exibir os totais por PI. Envie a planilha BI ou verifique o arquivo de cache.</div>
+                {% endif %}
+<script id="dados-oms" type="application/json">
+{{ om_points|default([])|tojson|safe }}
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        var gndSel = document.getElementById('filtro_gnd');
+        var piSel = document.getElementById('filtro_pi');
+        function applyFilters(){
+            var params = new URLSearchParams(window.location.search);
+            if(gndSel) params.set('gnd', gndSel.value || '');
+            if(piSel) params.set('pi', piSel.value || '');
+            window.location.search = params.toString();
+        }
+        if(gndSel) gndSel.addEventListener('change', applyFilters);
+        if(piSel) piSel.addEventListener('change', applyFilters);
+    });
+</script>
+{% endblock %}
+

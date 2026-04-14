@@ -1,0 +1,659 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<form method="GET" class="mb-3" id="dashboard-filters">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label mb-0">Finalidade</label>
+            <select name="finalidade" class="form-control">
+                <option value="">Todas</option>
+                {% for f in finalidades %}
+                <option value="{{ f }}" {% if finalidade_filter == f %}selected{% endif %}>{{ f }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label mb-0">Órgão Demandante</label>
+            <select name="orgao" class="form-control">
+                <option value="">Todos</option>
+                {% for o in orgaos_demandantes %}
+                <option value="{{ o }}" {% if orgao_filter == o %}selected{% endif %}>{{ o }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label mb-0">ND</label>
+            <select name="nd" class="form-control">
+                <option value="">Todos</option>
+                {% for nd in nd_possiveis %}
+                <option value="{{ nd }}" {% if nd_filter == nd %}selected{% endif %}>{{ nd }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label mb-0">GND</label>
+            <select name="gnd" class="form-control">
+                <option value="">Todos</option>
+                {% for gnd in gnd_opcoes %}
+                <option value="{{ gnd }}" {% if gnd_filter == gnd %}selected{% endif %}>{{ gnd }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label mb-0">Descrição contém</label>
+            <input type="text" name="descricao" class="form-control" value="{{ descricao_filter }}" placeholder="Buscar termo na descrição">
+        </div>
+        <div class="col-md-12 d-flex gap-2 mt-2">
+            <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary w-100">Limpar</a>
+        </div>
+    </div>
+</form>
+
+<div class="row">
+    <!-- Cards de Resumo baseados na sua planilha -->
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Solicitações</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_solicitacoes }}</div>
+                        <div class="text-xs text-muted">{{ total_solicitacoes_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Aguardando Análise</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ solicitacoes_aguardando }}</div>
+                        <div class="text-xs text-muted">{{ solicitacoes_aguardando_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Em Análise</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ solicitacoes_analise }}</div>
+                        <div class="text-xs text-muted">{{ solicitacoes_analise_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-search fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Aprovadas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ solicitacoes_aprovadas }}</div>
+                        <div class="text-xs text-muted">{{ solicitacoes_aprovadas_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Negadas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ solicitacoes_negadas }}</div>
+                        <div class="text-xs text-muted">{{ solicitacoes_negadas_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-2 col-md-4 mb-4">
+        <div class="card border-left-secondary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">Arquivadas</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ solicitacoes_arquivadas }}</div>
+                        <div class="text-xs text-muted">{{ solicitacoes_arquivadas_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-archive fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Cards para Notas de Crédito -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-dark shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">Total Notas de Crédito</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_ncs }}</div>
+                        <div class="text-xs text-muted">{{ total_ncs_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-invoice-dollar fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">NCs Pendentes</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ ncs_abertas }}</div>
+                        <div class="text-xs text-muted">{{ ncs_abertas_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards para PROs -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total PROs</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_pros }}</div>
+                        <div class="text-xs text-muted">{{ total_pros_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-file-contract fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">PROs Pendentes</div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pros_pendentes }}</div>
+                        <div class="text-xs text-muted">{{ pros_pendentes_valor|format_currency }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Gráfico de Solicitações por Finalidade -->
+    <div class="col-xl-4 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitações por Finalidade (Valor)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="finalidadeChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Solicitações por Status -->
+    <div class="col-xl-4 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitações por Status</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="statusChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Solicitações por Órgão (Valor) -->
+    <div class="col-xl-4 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitações por Órgão (Valor)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="orgaoChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráfico de Solicitações por Mês -->
+    <div class="col-xl-4 col-lg-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitações por Mês (Últimos 6 meses)</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="mesChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Solicitações Recentes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitações Recentes</h6>
+                <a href="{{ url_for('listar_solicitacoes') }}" class="btn btn-sm btn-primary">Ver Todas</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nº Solicitação</th>
+                                <th>Data</th>
+                                <th>OM</th>
+                                <th>Sigla UG</th>
+                                <th>Finalidade</th>
+                                <th>Valor Solicitado</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for solicitacao in solicitacoes_recentes %}
+                            <tr>
+                                <td><strong>{{ solicitacao.numero }}</strong></td>
+                                <td>{{ solicitacao.data_solicitacao.strftime('%d/%m/%Y') if solicitacao.data_solicitacao else '--' }}</td>
+                                <td>
+                                    {% if solicitacao.pedidos %}
+                                        {{ solicitacao.pedidos[0].om or '--' }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if solicitacao.pedidos %}
+                                        {{ solicitacao.pedidos[0].sigla_ug or '--' }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>{{ solicitacao.finalidade or '--' }}</td>
+                                <td>{{ solicitacao.total_solicitado|format_currency }}</td>
+                                <td>
+                                    <span class="badge status-{{ solicitacao.status|lower|replace(' ', '-') }}">
+                                        {{ solicitacao.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('detalhes_solicitacao', id=solicitacao.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center">Nenhuma solicitação recente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notas de Crédito Recentes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Notas de Crédito Recentes</h6>
+                <a href="{{ url_for('listar_ncs') }}" class="btn btn-sm btn-primary">Ver Todas</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nº NC</th>
+                                <th>Data</th>
+                                <th>DIEx</th>
+                                <th>Órgão Demandante</th>
+                                <th>COD UG</th>
+                                <th>SIGLA UG</th>
+                                <th>PI</th>
+                                <th>ND</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nc in ultimas_ncs %}
+                            <tr>
+                                <td><strong>{{ nc.numero }}</strong></td>
+                                <td>{{ nc.data_criacao.strftime('%d/%m/%Y') if nc.data_criacao else '--' }}</td>
+                                <td>
+    {% if nc.solicitacao_origem %}  {# CORRIGIDO #}
+        {{ nc.solicitacao_origem.diex or '--' }}  {# CORRIGIDO #}
+    {% else %}
+        --
+    {% endif %}
+</td>
+<td>
+    {% if nc.solicitacao_origem %}  {# CORRIGIDO #}
+        {{ nc.solicitacao_origem.orgao_demandante or '--' }}  {# CORRIGIDO #}
+    {% else %}
+        --
+    {% endif %}
+</td>
+                                <td>{{ nc.cod_ug or '--' }}</td>
+                                <td>{{ nc.sigla_ug or '--' }}</td>
+                                <td>{{ nc.pi or '--' }}</td>
+                                <td>{{ nc.nd or '--' }}</td>
+                                <td>
+                                    {% if nc.valor and nc.valor > 0 %}
+                                        {{ nc.valor|format_currency }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge status-{{ nc.status|lower|replace(' ', '-') }}">
+                                        {{ nc.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('detalhes_nc', id=nc.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="11" class="text-center">Nenhuma Nota de Crédito recente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PROs Recentes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">PROs Recentes</h6>
+                <a href="{{ url_for('listar_pros') }}" class="btn btn-sm btn-primary">Ver Todas</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nº PRO</th>
+                                <th>Data</th>
+                                <th>COD UG</th>
+                                <th>SIGLA UG</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pro in ultimas_pros %}
+                            <tr>
+                                <td><strong>{{ pro.numero }}</strong></td>
+                                <td>{{ pro.data_criacao.strftime('%d/%m/%Y') if pro.data_criacao else '--' }}</td>
+                                <td>{{ pro.cod_ug or '--' }}</td>
+                                <td>{{ pro.sigla_ug or '--' }}</td>
+                                <td>
+                                    {% if pro.valor_total and pro.valor_total > 0 %}
+                                        {{ pro.valor_total|format_currency }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge status-{{ pro.status|lower|replace(' ', '-') }}" style="color: #000 !important;">
+                                        {{ pro.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('detalhes_pro', id=pro.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center">Nenhuma PRO recente</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Dados para os gráficos
+const finalidades = {{ finalidades|tojson }};
+const solicitacoesPorFinalidade = {{ solicitacoes_por_finalidade|tojson }};
+const statusData = {{ solicitacoes_por_status|tojson }};
+const solicitacoesPorMes = {{ solicitacoes_por_mes|tojson }};
+const orgaosLabels = {{ orgaos_labels|tojson }};
+const orgaosValores = {{ orgaos_valores|tojson }};
+
+// Auto-submit filtros ao selecionar/alterar
+const filtrosForm = document.getElementById('dashboard-filters');
+if (filtrosForm) {
+    const inputs = filtrosForm.querySelectorAll('select, input[type="text"]');
+    let debounceTimer;
+
+    const submitNow = () => filtrosForm.submit();
+    const submitDebounced = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(submitNow, 400);
+    };
+
+    inputs.forEach(el => {
+        if (el.tagName === 'SELECT') {
+            el.addEventListener('change', submitNow);
+        } else {
+            el.addEventListener('input', submitDebounced);
+            el.addEventListener('change', submitNow);
+        }
+    });
+}
+
+// Gráfico de Barras - Solicitações por Finalidade (Valor)
+if (document.getElementById('finalidadeChart')) {
+    new Chart(document.getElementById('finalidadeChart'), {
+        type: 'bar',
+        data: {
+            labels: finalidades,
+            datasets: [{
+                label: 'Valor solicitado',
+                data: solicitacoesPorFinalidade,
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Gráfico de Barras - Solicitações por Órgão (Valor)
+if (document.getElementById('orgaoChart')) {
+    new Chart(document.getElementById('orgaoChart'), {
+        type: 'bar',
+        data: {
+            labels: orgaosLabels,
+            datasets: [{
+                label: 'Valor solicitado',
+                data: orgaosValores,
+                backgroundColor: 'rgba(255, 159, 64, 0.8)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: value => value.toLocaleString('pt-BR') }
+                },
+                x: {
+                    ticks: { autoSkip: false, maxRotation: 60, minRotation: 30 }
+                }
+            }
+        }
+    });
+}
+
+// Gráfico de Pizza - Solicitações por Status
+if (document.getElementById('statusChart')) {
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(statusData),
+            datasets: [{
+                data: Object.values(statusData),
+                backgroundColor: [
+                    '#f39c12', '#3498db', '#27ae60', '#e74c3c', '#95a5a6', '#9b59b6'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Gráfico de Linhas - Solicitações por Mês
+if (document.getElementById('mesChart')) {
+    new Chart(document.getElementById('mesChart'), {
+        type: 'line',
+        data: {
+            labels: solicitacoesPorMes.meses,
+            datasets: [{
+                label: 'Solicitações por Mês',
+                data: solicitacoesPorMes.valores,
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: 'rgba(76, 175, 80, 1)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+</script>
+
+<style>
+.status-aguardando-análise { background-color: #f39c12; color: white; }
+.status-em-análise { background-color: #3498db; color: white; }
+.status-aprovado-cmt-log { background-color: #27ae60; color: white; }
+.status-aprovado-parcialmente { background-color: #2ecc71; color: white; }
+.status-negado-cmt-log { background-color: #e74c3c; color: white; }
+.status-arquivado { background-color: #95a5a6; color: white; }
+.status-aguardando-despacho { background-color: #9b59b6; color: white; }
+.status-devolvido-para-correções { background-color: #e67e22; color: white; }
+
+.status-não-conferida { background-color: #f39c12; color: white; }
+.status-pendente { background-color: #3498db; color: white; }
+.status-cadastrada-sisnc { background-color: #17a2b8; color: white; }
+.status-processada-siafi { background-color: #27ae60; color: white; }
+.status-cancelada { background-color: #e74c3c; color: white; }
+
+.status-pendente { background-color: #f39c12; color: white; }
+.status-convertido-em-nc { background-color: #27ae60; color: white; }
+.status-cancelada { background-color: #e74c3c; color: white; }
+</style>
+{% endblock %}

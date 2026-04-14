@@ -1,0 +1,1108 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes da Solicitação - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Detalhes da Solicitação{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Solicitação: {{ solicitacao.numero }}</h6>
+                <span class="badge status-{{ solicitacao.status|lower|replace(' ', '-') }}">
+                    {{ solicitacao.status }}
+                </span>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('editar_solicitacao', id=solicitacao.id) }}" id="formEditarSolicitacao">
+                    <!-- Dados Básicos -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="diex">DIEx:</label>
+                                <input type="text" class="form-control" id="diex" name="diex" value="{{ solicitacao.diex or '' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="orgao_demandante">Órgão Demandante:</label>
+                                <select class="form-control" id="orgao_demandante" name="orgao_demandante" required>
+                                    <option value="">Selecione o órgão demandante</option>
+                                    {% for orgao in orgaos_demandantes %}
+                                    <option value="{{ orgao }}" {% if solicitacao.orgao_demandante == orgao %}selected{% endif %}>{{ orgao }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="modalidade">Modalidade:</label>
+                                <select class="form-control" id="modalidade" name="modalidade" required>
+                                    <option value="">Selecione a modalidade</option>
+                                    {% for modalidade in modalidades %}
+                                    <option value="{{ modalidade }}" {% if solicitacao.modalidade == modalidade %}selected{% endif %}>{{ modalidade|upper }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="data_solicitacao">Data:</label>
+                                <input type="date" class="form-control" id="data_solicitacao" name="data_solicitacao" 
+                                       value="{{ solicitacao.data_solicitacao.strftime('%Y-%m-%d') if solicitacao.data_solicitacao else '' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="destinatario-colog-section" class="alert alert-info mb-4" style="display: {{ 'block' if solicitacao.modalidade == 'Transferência Interna COLOG' else 'none' }};">
+                        <h6><i class="fas fa-info-circle"></i> Destinatario do recurso no COLOG</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="destinatario_colog">Destinatario do recurso no COLOG:</label>
+                                    <select class="form-control" id="destinatario_colog" name="destinatario_colog">
+                                        <option value="">Selecione</option>
+                                        <option value="COp Log" {% if solicitacao.destinatario_colog == 'COp Log' %}selected{% endif %}>COp Log</option>
+                                        <option value="C Mat" {% if solicitacao.destinatario_colog == 'C Mat' %}selected{% endif %}>C Mat</option>
+                                        <option value="CMAVEx" {% if solicitacao.destinatario_colog == 'CMAVEx' %}selected{% endif %}>CMAVEx</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Seção específica para PASA-DEC e Mnt OP-DEC -->
+                    {% if possui_finalidade_especial %}
+                    <div class="alert alert-info mb-4">
+                        <h6><i class="fas fa-info-circle"></i> Informações Específicas PASA-DEC / Mnt OP-DEC / Câmaras frigoríficas</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="tem_fsv">Possui FSTVE (Ficha Simplificada Técnica de Viabilidade Econômica)?</label>
+                                    <select class="form-control" id="tem_fsv" name="tem_fsv" required>
+                                        <option value="">Selecione</option>
+                                        <option value="sim" {% if solicitacao.tem_fsv == 'sim' %}selected{% endif %}>Sim</option>
+                                        <option value="nao" {% if solicitacao.tem_fsv == 'nao' %}selected{% endif %}>Não</option>
+                                    </select>
+                                    <small class="form-text text-muted">Obrigatório para finalidades PASA-DEC, Mnt OP-DEC e Câmaras frigoríficas</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="diex_dom">DIEx DOM:</label>
+                                    <input type="text" class="form-control" id="diex_dom" name="diex_dom" 
+                                           value="{{ solicitacao.diex_dom or '' }}" 
+                                           placeholder="Número do DIEx DOM"
+                                           {% if solicitacao.tem_fsv != 'sim' %}disabled{% endif %}>
+                                    <small class="form-text text-muted">Obrigatório quando possui FSTVE</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="nr_opus">Nr OPUS:</label>
+                                    <input type="text" class="form-control" id="nr_opus" name="nr_opus" 
+                                           value="{{ solicitacao.nr_opus or '' }}"
+                                           placeholder="Número do OPUS">
+                                    <small class="form-text text-muted">Obrigatório quando possui FSTVE para PASA-DEC/Mnt OP-DEC. Para Câmaras frigoríficas, pode ser cadastrado independente do FSTVE.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Pedidos por OM -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">Pedidos por OM</h5>
+                            
+                            <div id="pedidos-container">
+                                {% for pedido in solicitacao.pedidos %}
+                                <div class="card mb-3 pedido-item" data-pedido-index="{{ loop.index0 }}">
+                                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                        <h6 class="m-0 font-weight-bold">OM {{ loop.index }}</h6>
+                                        <button type="button" class="btn btn-danger btn-sm remove-pedido" {% if solicitacao.pedidos|length <= 1 %}style="display: none;"{% endif %}>
+                                            <i class="fas fa-trash"></i> Remover OM
+                                        </button>
+                                    </div>
+                                    <div class="card-body">
+                                        <!-- Dados da OM -->
+                                        <div class="row">
+                                            <div class="col-md-5">
+                                                <div class="form-group">
+                                                    <label>OM:</label>
+                                                    <input type="text" class="form-control om-input" name="om[]" 
+                                                           value="{{ pedido.om }}" required
+                                                           data-oms='{{ oms_data | tojson | safe }}'
+                                                           list="oms-list-{{ loop.index0 }}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="form-group">
+                                                    <label>COD OM:</label>
+                                                    <input type="text" class="form-control codom-input" name="codom[]" 
+                                                           value="{{ pedido.codom or '' }}" readonly style="background-color: #f8f9fa;">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <div class="form-group">
+                                                    <label>COD UG:</label>
+                                                    <input type="text" class="form-control codug-input" name="codug[]" 
+                                                           value="{{ pedido.codug or '' }}" readonly style="background-color: #f8f9fa;">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label>Sigla UG:</label>
+                                                    <input type="text" class="form-control sigla-ug-input" name="sigla_ug[]" 
+                                                           value="{{ pedido.sigla_ug or '' }}" readonly style="background-color: #f8f9fa;">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-12">
+                                                <div class="form-group">
+                                                    <label>Descrição da Solicitação:</label>
+                                                    <textarea class="form-control descricao-om-input" name="descricao_om[]" rows="2" placeholder="Especificação dos itens da Solicitação">{{ pedido.descricao_om or '' }}</textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- NDs e Valores COM FINALIDADE -->
+                                        <div class="nds-section mt-3">
+                                            <label class="font-weight-bold">NDs, Finalidades e Valores:</label>
+                                            <div class="nds-container">
+                                                {% for item in pedido.itens %}
+                                                <div class="nd-item row mb-2">
+                                                    <div class="col-md-3">
+                                                        <div class="form-group">
+                                                            <label>ND:</label>
+                                                            <select class="form-control nd-select" name="nd[]" required>
+                                                                <option value="">Selecione o ND</option>
+                                                                {% for nd_option in nd_possiveis %}
+                                                                <option value="{{ nd_option }}" {% if item.nd == nd_option %}selected{% endif %}>{{ nd_option }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="form-group">
+                                                            <label>Finalidade:</label>
+                                                            <select class="form-control finalidade-nd-input" name="finalidade_nd[]" required>
+                                                                <option value="">Selecione a finalidade</option>
+                                                                {% for finalidade_option in finalidades %}
+                                                                <option value="{{ finalidade_option }}" {% if item.finalidade == finalidade_option %}selected{% endif %}>{{ finalidade_option }}</option>
+                                                                {% endfor %}
+                                                            </select>
+                                                            {% if item.pi %}
+                                                            <small class="form-text text-success pi-info">
+                                                                PI calculado: {{ item.pi }}
+                                                            </small>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="form-group">
+                                                            <label>Valor Solicitado (R$):</label>
+                                                            <input type="text" class="form-control valor-solicitado-input" name="valor_solicitado[]" 
+                                                                   value="{{ item.valor_solicitado if item.valor_solicitado is not none else '0.00' }}" 
+                                                                   data-raw-value="{{ item.valor_solicitado if item.valor_solicitado is not none else '0.00' }}"
+                                                                   placeholder="0,00" required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 d-flex flex-column">
+                                                        <div class="form-group mb-2">
+                                                            <label>Valor Aprovado (R$):</label>
+                                                            <input type="text" class="form-control valor-aprovado-input" name="valor_aprovado[]" 
+                                                                   value="{{ item.valor_aprovado if item.valor_aprovado is not none else '0.00' }}"
+                                                                   data-raw-value="{{ item.valor_aprovado if item.valor_aprovado is not none else '0.00' }}"
+                                                                   placeholder="0,00">
+                                                        </div>
+                                                        <button type="button" class="btn btn-outline-danger btn-sm remove-nd align-self-start" title="Remover ND">
+                                                            <i class="fas fa-trash"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                {% endfor %}
+                                            </div>
+                                            <button type="button" class="btn btn-secondary btn-sm mt-2 add-nd">
+                                                <i class="fas fa-plus"></i> Adicionar ND
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            
+                            <button type="button" class="btn btn-primary btn-sm mt-2" id="add-pedido">
+                                <i class="fas fa-plus"></i> Adicionar OM
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Campos de texto -->
+                    <div class="form-group">
+                        <label for="descricao">Descrição:</label>
+                        <textarea class="form-control" id="descricao" name="descricao" rows="4">{{ solicitacao.descricao or '' }}</textarea>
+                    </div>
+
+                    <!-- Validação para PASA-DEC e Mnt OP-DEC -->
+                    {% set condicoes_dec_atendidas = true %}
+                    {% if possui_finalidade_dec %}
+                        {% if not solicitacao.tem_fsv or (solicitacao.tem_fsv == 'sim' and (not solicitacao.diex_dom or not solicitacao.nr_opus)) %}
+                            {% set condicoes_dec_atendidas = false %}
+                        {% endif %}
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="parecer_analise">Parecer da Análise:</label>
+                        <textarea class="form-control" id="parecer_analise" name="parecer_analise" rows="3" 
+                                  placeholder="Digite o parecer da análise...&#10;&#10;Opção especial:&#10;Digite 'Devolvido para a OM para correções' para alterar o status automaticamente."
+                                  {% if possui_finalidade_dec and not condicoes_dec_atendidas %}disabled{% endif %}>
+                            {{ solicitacao.parecer_analise or '' }}
+                        </textarea>
+                        {% if possui_finalidade_dec and not condicoes_dec_atendidas %}
+                        <div class="alert alert-warning mt-2">
+                            <i class="fas fa-exclamation-triangle"></i> 
+                            <strong>Parecer bloqueado:</strong> Para finalidades PASA-DEC ou Mnt OP-DEC, é necessário:
+                            <ul class="mb-0 mt-2">
+                                <li>Possuir FSTVE (Ficha Simplificada Técnica de Viabilidade Econômica)</li>
+                                <li>Ter o DIEx DOM preenchido (quando possui FSTVE)</li>
+                                <li>Ter o Nr OPUS preenchido (quando possui FSTVE)</li>
+                            </ul>
+                            <p class="mb-0 mt-2">Preencha as informações acima para liberar o campo de parecer.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="despacho">Despacho:</label>
+                        <select class="form-control" id="despacho" name="despacho" {% if possui_finalidade_dec and not condicoes_dec_atendidas %}disabled{% endif %}>
+                            <option value="">Selecione o despacho</option>
+                            {% for despacho in despachos_opcoes %}
+                            <option value="{{ despacho }}" {% if solicitacao.despacho == despacho %}selected{% endif %}>{{ despacho }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">
+                            • <strong>Aprovado integralmente</strong>: Valores aprovados serão iguais aos solicitados<br>
+                            • <strong>Aprovado parcialmente</strong>: Digite manualmente os valores aprovados<br>
+                            • <strong>Negado</strong>: Valores aprovados serão automaticamente 0,00
+                        </small>
+                    </div>
+
+                    <!-- Campo para descrição da NC -->
+                    <div class="form-group">
+                        <label for="descricao_nc_usuario">Descrição para Nota de Crédito (se necessário):</label>
+                        <textarea class="form-control" id="descricao_nc_usuario" name="descricao_nc_usuario" rows="2" 
+                                  placeholder="Preencha apenas se for necessário especificar informações como Nº OPUS ou descrição específica...">{{ solicitacao.descricao|extrair_descricao_nc }}</textarea>
+                        <small class="form-text text-muted">
+                            Este campo é obrigatório para alguns PIs específicos (como E6SUPLJA7PA, E6SUSOLA7PA, etc.) 
+                            onde aparece "a ser digitado pelo usuário". Para outros casos, pode ser deixado em branco.
+                        </small>
+                    </div>
+
+                    <!-- Informação sobre status automático -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Status Automático</h6>
+                        <p class="mb-0">
+                            <strong>Fluxo automático de status:</strong><br>
+                            • <strong>Parecer com "Devolvido para a OM para correções"</strong> → Status: Devolvido para correções<br>
+                            • <strong>Parecer preenchido (sem a frase acima)</strong> → Aguardando despacho<br>
+                            • <strong>Despacho "Aprovado integralmente"</strong> → Aprovado Ch Sup (valores copiados automaticamente)<br>
+                            • <strong>Despacho "Aprovado parcialmente"</strong> → Aprovado Parcialmente (digite valores manualmente)<br>
+                            • <strong>Despacho "Negado"</strong> → Negado Ch Sup (valores zerados automaticamente)<br>
+                            • <strong>Sem parecer</strong> → Aguardando Análise
+                        </p>
+                    </div>
+
+                    <!-- Botões de ação -->
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary" id="btnSalvar">
+                            <i class="fas fa-save"></i> Atualizar Solicitação
+                        </button>
+                        <a href="{{ url_for('listar_solicitacoes') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Voltar para Lista
+                        </a>
+                        
+                        <!-- Botão para excluir solicitação -->
+                        <button type="button" class="btn btn-danger float-right" 
+                                onclick="confirmarExclusao({{ solicitacao.id }})">
+                            <i class="fas fa-trash"></i> Excluir Solicitação
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Formulário para exclusão -->
+                <form id="formExcluirSolicitacao" method="POST" action="{{ url_for('excluir_solicitacao', id=solicitacao.id) }}" style="display: none;"></form>
+                <!-- Exibição de Notas de Crédito e PROs relacionadas -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <strong>Notas de Crédito Relacionadas</strong>
+                            </div>
+                            <div class="card-body">
+                                {% if ncs_relacionadas and ncs_relacionadas|length > 0 %}
+                                    <ul class="list-group">
+                                        {% for nc in ncs_relacionadas %}
+                                            <li class="list-group-item">
+                                                <strong>NC nº:</strong> {{ nc.numero }}<br>
+                                                <strong>Valor:</strong> R$ {{ nc.valor|float|round(2) }}<br>
+                                                <strong>Status:</strong> {{ nc.status }}<br>
+                                                <a href="{{ url_for('detalhes_nc', id=nc.id) }}" class="btn btn-sm btn-primary mt-2">Ver detalhes</a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-muted">Nenhuma Nota de Crédito relacionada.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <strong>PROs Relacionadas</strong>
+                            </div>
+                            <div class="card-body">
+                                {% if pros_relacionadas and pros_relacionadas|length > 0 %}
+                                    <ul class="list-group">
+                                        {% for pro in pros_relacionadas %}
+                                            <li class="list-group-item">
+                                                <strong>PRO nº:</strong> {{ pro.numero }}<br>
+                                                <strong>Valor:</strong> R$ {{ pro.valor_total|float|round(2) }}<br>
+                                                <strong>Status:</strong> {{ pro.status }}<br>
+                                                <a href="{{ url_for('detalhes_pro', id=pro.id) }}" class="btn btn-sm btn-success mt-2">Ver detalhes</a>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p class="text-muted">Nenhum PRO relacionado.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let nextPedidoIndex = {{ solicitacao.pedidos|length }};
+
+    let omsCache = null;
+    const apiOmsUrl = "{{ url_for('api_oms') }}";
+    const apiOmTemplateUrl = "{{ url_for('api_om_detalhes', nome_om='__OM__') }}";
+
+    const buildOmUrl = (nomeOm) => apiOmTemplateUrl.replace('__OM__', encodeURIComponent(nomeOm || ''));
+
+    const fetchJsonSafe = async (url) => {
+        const resp = await fetch(`${url}${url.includes('?') ? '&' : '?'}_ts=${Date.now()}`, { cache: 'no-store' });
+        const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        if (!resp.ok || !contentType.includes('application/json')) {
+            throw new Error(`Resposta inválida (${resp.status}) para ${url}`);
+        }
+        return resp.json();
+    };
+
+    const parseOmsAttr = (inputEl) => {
+        try {
+            return JSON.parse(inputEl.getAttribute('data-oms') || '[]');
+        } catch (err) {
+            console.error('Dados de OM inválidos para autocomplete', err);
+            return [];
+        }
+    };
+
+    const getCachedOms = () => Array.isArray(omsCache) ? omsCache : [];
+
+    const ensureOmsCache = async (inputEl) => {
+        if (Array.isArray(omsCache) && omsCache.length) return omsCache;
+
+        try {
+            const dados = await fetchJsonSafe(apiOmsUrl);
+            if (Array.isArray(dados) && dados.length) {
+                omsCache = dados;
+                console.log(`OMs carregadas da API oficial: ${omsCache.length}`);
+                return omsCache;
+            }
+            console.error('API de OMs retornou lista vazia');
+        } catch (err) {
+            console.error('Erro ao buscar API oficial de OMs', err);
+        }
+
+        const parsed = parseOmsAttr(inputEl || document.querySelector('.om-input'));
+        if (Array.isArray(parsed) && parsed.length) {
+            omsCache = parsed;
+            console.log(`OMs carregadas do template (fallback): ${omsCache.length}`);
+            return omsCache;
+        }
+
+        omsCache = [];
+        return omsCache;
+    };
+
+    async function inicializarAutocompleteOM(omInput) {
+        if (!omInput) return;
+
+        await ensureOmsCache(omInput);
+
+        const encontrarPorValor = (valor) => {
+            const termo = (valor || '').trim().toLowerCase();
+            if (!termo) return null;
+            return getCachedOms().find(om =>
+                (om.OM || '').toLowerCase() === termo ||
+                (om.CODUG || '').toString() === termo ||
+                (om.CODOM || '').toString() === termo
+            );
+        };
+
+        let datalist = document.getElementById('oms-list-dynamic');
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = 'oms-list-dynamic';
+            document.body.appendChild(datalist);
+        }
+
+        datalist.innerHTML = '';
+        getCachedOms().forEach(om => {
+            const option = document.createElement('option');
+            option.value = om.OM;
+            option.setAttribute('data-codom', om.CODOM);
+            option.setAttribute('data-codug', om.CODUG);
+            option.setAttribute('data-sigla', om.SIGLA_UG);
+            option.label = `${om.OM} · CODOM ${om.CODOM || ''} · CODUG ${om.CODUG || ''}`;
+            datalist.appendChild(option);
+        });
+
+        omInput.setAttribute('list', 'oms-list-dynamic');
+
+        const preencherCamposOm = (selectedValue, omEncontrada) => {
+            const parent = omInput.closest('.pedido-item');
+            if (!parent) return;
+            const codomInput = parent.querySelector('.codom-input');
+            const codugInput = parent.querySelector('.codug-input');
+            const siglaUgInput = parent.querySelector('.sigla-ug-input');
+            const codugToggle = parent.querySelector('.codug-manual-toggle');
+
+            if (omEncontrada) {
+                if (codomInput) codomInput.value = omEncontrada.CODOM || '';
+                if (!codugToggle || !codugToggle.checked) {
+                    if (codugInput) codugInput.value = omEncontrada.CODUG || '';
+                    if (siglaUgInput) siglaUgInput.value = omEncontrada.SIGLA_UG || '';
+                } else if (codugInput && (codugInput.value || '').trim() === (omEncontrada.CODUG || '').toString()) {
+                    if (siglaUgInput) siglaUgInput.value = omEncontrada.SIGLA_UG || '';
+                }
+            } else {
+                if (codomInput) codomInput.value = '';
+                if (!codugToggle || !codugToggle.checked) {
+                    if (codugInput) codugInput.value = '';
+                    if (siglaUgInput) siglaUgInput.value = '';
+                }
+            }
+        };
+
+        const aplicarSelecaoLocal = (selectedValue) => {
+            const option = Array.from(datalist.options).find(opt => opt.value === selectedValue);
+            const fromOption = option ? {
+                CODOM: option.getAttribute('data-codom') || '',
+                CODUG: option.getAttribute('data-codug') || '',
+                SIGLA_UG: option.getAttribute('data-sigla') || '',
+                OM: selectedValue
+            } : null;
+            const omEncontrada = fromOption || encontrarPorValor(selectedValue);
+            preencherCamposOm(selectedValue, omEncontrada);
+        };
+
+        const aplicarSelecaoServidor = async (selectedValue) => {
+            const valor = (selectedValue || '').trim();
+            if (!valor) {
+                preencherCamposOm('', null);
+                return;
+            }
+
+            try {
+                const { data: omApi } = await fetchJsonSafe(buildOmUrl(valor));
+                if (omApi && !omApi.error) {
+                    preencherCamposOm(valor, omApi);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Falha ao validar OM na API, usando cache local.', err);
+            }
+
+            aplicarSelecaoLocal(valor);
+        };
+
+        omInput.addEventListener('input', function() {
+            const parent = omInput.closest('.pedido-item');
+            if (!parent) return;
+            const codomInput = parent.querySelector('.codom-input');
+            const codugInput = parent.querySelector('.codug-input');
+            const siglaUgInput = parent.querySelector('.sigla-ug-input');
+            const codugToggle = parent.querySelector('.codug-manual-toggle');
+            if (codomInput) codomInput.value = '';
+            if (!codugToggle || !codugToggle.checked) {
+                if (codugInput) codugInput.value = '';
+                if (siglaUgInput) siglaUgInput.value = '';
+            }
+        });
+
+        omInput.addEventListener('change', function() {
+            aplicarSelecaoServidor(this.value);
+        });
+
+        omInput.addEventListener('blur', function() {
+            aplicarSelecaoServidor(this.value);
+        });
+
+        omInput.addEventListener('keyup', function(e) {
+            if (e.key.length === 1 || e.key === 'Backspace') {
+                const termo = this.value.toLowerCase();
+                const resultados = getCachedOms().filter(om =>
+                    (om.OM || '').toLowerCase().includes(termo)
+                ).slice(0, 10);
+
+                datalist.innerHTML = '';
+                resultados.forEach(om => {
+                    const option = document.createElement('option');
+                    option.value = om.OM;
+                    option.setAttribute('data-codom', om.CODOM);
+                    option.setAttribute('data-codug', om.CODUG);
+                    option.setAttribute('data-sigla', om.SIGLA_UG);
+                    datalist.appendChild(option);
+                });
+            }
+        });
+    }
+    
+    // Função para verificar condições PASA-DEC e Mnt OP-DEC
+    function verificarCondicoesDEC() {
+        const possuiFinalidadeDEC = document.querySelectorAll('.finalidade-nd-input').length > 0 && 
+            Array.from(document.querySelectorAll('.finalidade-nd-input')).some(select => 
+                ['PASA-DEC', 'Mnt OP-DEC'].includes(select.value)
+            );
+        
+        if (!possuiFinalidadeDEC) {
+            // Não possui finalidades DEC, liberar campos
+            document.getElementById('parecer_analise').disabled = false;
+            document.getElementById('despacho').disabled = false;
+            return true;
+        }
+        
+        // Possui finalidades DEC, verificar condições
+        const temFsv = document.getElementById('tem_fsv').value;
+        const diexDom = document.getElementById('diex_dom').value;
+        const nrOpus = document.getElementById('nr_opus').value;
+
+        const condicoesAtendidas = temFsv && (temFsv !== 'sim' || (temFsv === 'sim' && diexDom.trim() !== '' && nrOpus.trim() !== ''));
+        
+        // Habilitar/desabilitar campos conforme condições
+        document.getElementById('parecer_analise').disabled = !condicoesAtendidas;
+        document.getElementById('despacho').disabled = !condicoesAtendidas;
+        
+        return condicoesAtendidas;
+    }
+
+    function alternarDestinatarioColog() {
+        const modalidadeSelect = document.getElementById('modalidade');
+        const destinatarioSection = document.getElementById('destinatario-colog-section');
+        const destinatarioSelect = document.getElementById('destinatario_colog');
+
+        if (!modalidadeSelect || !destinatarioSection) return;
+
+        if (modalidadeSelect.value === 'Transferência Interna COLOG') {
+            destinatarioSection.style.display = 'block';
+        } else {
+            destinatarioSection.style.display = 'none';
+            if (destinatarioSelect) {
+                destinatarioSelect.value = '';
+            }
+        }
+    }
+
+    // FUNÇÃO SIMPLIFICADA: Converter para número
+    function moedaParaFloat(valor) {
+        if (!valor || valor === '') return 0;
+        
+        // Se já é número, retorna
+        if (typeof valor === 'number') return valor;
+        
+        // Converte string para número direto
+        let num = parseFloat(valor);
+        if (isNaN(num)) return 0;
+        
+        return num;
+    }
+
+    // FUNÇÃO SIMPLIFICADA: Formatar para exibição
+    function formatarParaExibicao(valor) {
+        const num = moedaParaFloat(valor);
+        
+        // Formata como moeda brasileira
+        return num.toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    // Função para atualizar valores aprovados baseado no despacho selecionado
+    function atualizarValoresAprovados() {
+        const despachoSelect = document.getElementById('despacho');
+        const despachoValue = despachoSelect.value;
+        
+        if (despachoValue.includes('Aprovado integralmente')) {
+            // Copiar todos os valores solicitados para aprovados
+            document.querySelectorAll('.valor-solicitado-input').forEach((solicitadoInput, index) => {
+                const aprovadoInputs = document.querySelectorAll('.valor-aprovado-input');
+                if (aprovadoInputs[index]) {
+                    // Pega o valor RAW, formata e atualiza
+                    const rawValue = solicitadoInput.getAttribute('data-raw-value') || '0';
+                    const formatado = formatarParaExibicao(rawValue);
+                    aprovadoInputs[index].value = formatado;
+                    aprovadoInputs[index].setAttribute('data-raw-value', rawValue);
+                }
+            });
+            
+        } else if (despachoValue.includes('Negado')) {
+            // Zerar todos os valores aprovados
+            document.querySelectorAll('.valor-aprovado-input').forEach(input => {
+                input.value = '0,00';
+                input.setAttribute('data-raw-value', '0');
+            });
+        }
+        // Para "Aprovado parcialmente", mantém os valores atuais
+    }
+
+    // Função para criar um item de ND com finalidade
+    function createNdItem(ndValue = '', finalidadeValue = '', valorSolicitado = '0', valorAprovado = '0') {
+        const ndItem = document.createElement('div');
+        ndItem.className = 'nd-item row mb-2';
+        
+        let ndOptions = '<option value="">Selecione o ND</option>';
+        {% for nd in nd_possiveis %}
+        ndOptions += `<option value="{{ nd }}" ${ndValue === '{{ nd }}' ? 'selected' : ''}>{{ nd }}</option>`;
+        {% endfor %}
+        
+        let finalidadeOptions = '<option value="">Selecione a finalidade</option>';
+        {% for finalidade in finalidades %}
+        finalidadeOptions += `<option value="{{ finalidade }}" ${finalidadeValue === '{{ finalidade }}' ? 'selected' : ''}>{{ finalidade }}</option>`;
+        {% endfor %}
+        
+        const solicitadoFormatado = formatarParaExibicao(valorSolicitado);
+        const aprovadoFormatado = formatarParaExibicao(valorAprovado);
+        
+        ndItem.innerHTML = `
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label>ND:</label>
+                    <select class="form-control nd-select" name="nd[]" required>
+                        ${ndOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label>Finalidade:</label>
+                    <select class="form-control finalidade-nd-input" name="finalidade_nd[]" required>
+                        ${finalidadeOptions}
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label>Valor Solicitado (R$):</label>
+                    <input type="text" class="form-control valor-solicitado-input" name="valor_solicitado[]" 
+                           value="${solicitadoFormatado}" 
+                           data-raw-value="${valorSolicitado}"
+                           placeholder="0,00" required>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex flex-column">
+                <div class="form-group mb-2">
+                    <label>Valor Aprovado (R$):</label>
+                    <input type="text" class="form-control valor-aprovado-input" name="valor_aprovado[]" 
+                           value="${aprovadoFormatado}"
+                           data-raw-value="${valorAprovado}"
+                           placeholder="0,00">
+                </div>
+                <button type="button" class="btn btn-outline-danger btn-sm remove-nd align-self-start" title="Remover ND">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        return ndItem;
+    }
+
+    // Adicionar novo pedido (OM)
+    document.getElementById('add-pedido').addEventListener('click', function() {
+        const container = document.getElementById('pedidos-container');
+        const pedidoIndex = nextPedidoIndex;
+        nextPedidoIndex++;
+        
+        const newPedido = document.createElement('div');
+        newPedido.className = 'card mb-3 pedido-item';
+        newPedido.setAttribute('data-pedido-index', pedidoIndex);
+        
+        newPedido.innerHTML = `
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold">OM ${container.children.length + 1}</h6>
+                <button type="button" class="btn btn-danger btn-sm remove-pedido">
+                    <i class="fas fa-trash"></i> Remover OM
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-5">
+                        <div class="form-group">
+                            <label>OM:</label>
+                            <input type="text" class="form-control om-input" name="om[]" 
+                                   placeholder="Digite o nome da OM" required
+                                   data-oms='{{ oms_data | tojson | safe }}'
+                                   list="oms-list-${pedidoIndex}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>COD OM:</label>
+                            <input type="text" class="form-control codom-input" name="codom[]" 
+                                   readonly style="background-color: #f8f9fa;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>COD UG:</label>
+                            <input type="text" class="form-control codug-input" name="codug[]" 
+                                   readonly style="background-color: #f8f9fa;">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Sigla UG:</label>
+                            <input type="text" class="form-control sigla-ug-input" name="sigla_ug[]" 
+                                   readonly style="background-color: #f8f9fa;">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label>Descrição da Solicitação:</label>
+                            <textarea class="form-control descricao-om-input" name="descricao_om[]" rows="2" placeholder="Especificação dos itens da Solicitação"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="nds-section mt-3">
+                    <label class="font-weight-bold">NDs, Finalidades e Valores:</label>
+                    <div class="nds-container">
+                        <!-- Primeiro ND será adicionado abaixo -->
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm mt-2 add-nd">
+                        <i class="fas fa-plus"></i> Adicionar ND
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(newPedido);
+        
+        // Adicionar o primeiro ND
+        const ndsContainer = newPedido.querySelector('.nds-container');
+        const firstNd = createNdItem();
+        ndsContainer.appendChild(firstNd);
+        
+        // Inicializar autocomplete para o novo campo OM
+        const omInput = newPedido.querySelector('.om-input');
+        inicializarAutocompleteOM(omInput);
+        
+        console.log(`✅ Nova OM adicionada com índice: ${pedidoIndex}`);
+    });
+
+    // Inicializar autocomplete para todos os campos OM existentes
+    document.querySelectorAll('.om-input').forEach(omInput => {
+        inicializarAutocompleteOM(omInput);
+    });
+
+    // Adicionar evento para o campo de despacho
+    document.getElementById('despacho').addEventListener('change', function() {
+        atualizarValoresAprovados();
+    });
+
+    // Atualizar data-raw-value quando o usuário digita
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('valor-solicitado-input') || 
+            e.target.classList.contains('valor-aprovado-input')) {
+            
+            const input = e.target;
+            const valor = input.value;
+            
+            // Remove formatação e converte para número
+            let valorLimpo = valor.replace(/[^\d,.-]/g, '');
+            
+            // Converte vírgula para ponto se necessário
+            if (valorLimpo.includes(',') && !valorLimpo.includes('.')) {
+                valorLimpo = valorLimpo.replace(',', '.');
+            }
+            
+            // Converte para número
+            const numero = parseFloat(valorLimpo);
+            
+            // Atualiza o data-raw-value
+            if (!isNaN(numero)) {
+                input.setAttribute('data-raw-value', numero.toString());
+            }
+        }
+    });
+
+    // Formatar ao sair do campo
+    document.addEventListener('blur', function(e) {
+        if (e.target.classList.contains('valor-solicitado-input') || 
+            e.target.classList.contains('valor-aprovado-input')) {
+            
+            const input = e.target;
+            const rawValue = input.getAttribute('data-raw-value') || '0';
+            const formatado = formatarParaExibicao(rawValue);
+            input.value = formatado;
+        }
+    }, true);
+
+    // Adicionar ND
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('add-nd')) {
+            const container = e.target.previousElementSibling;
+            const newNd = createNdItem();
+            container.appendChild(newNd);
+            
+            console.log(`✅ Novo ND adicionado`);
+        } else if (e.target.classList.contains('remove-nd') || e.target.closest('.remove-nd')) {
+            const btn = e.target.closest('.remove-nd');
+            const ndRow = btn.closest('.nd-item');
+            const container = ndRow.parentElement;
+            const total = container.querySelectorAll('.nd-item').length;
+            if (total > 1) {
+                ndRow.remove();
+            }
+        }
+        
+        // Remover pedido
+        if (e.target.classList.contains('remove-pedido')) {
+            const pedidoItem = e.target.closest('.pedido-item');
+            const pedidos = document.querySelectorAll('.pedido-item');
+            if (pedidos.length > 1) {
+                pedidoItem.remove();
+                
+                // Reorganizar números das OMs
+                document.querySelectorAll('.pedido-item').forEach((item, index) => {
+                    item.querySelector('.card-header h6').textContent = `OM ${index + 1}`;
+                });
+                console.log('❌ OM removida');
+            }
+        }
+    });
+
+    // Inicializar os valores raw ao carregar
+    document.querySelectorAll('.valor-solicitado-input, .valor-aprovado-input').forEach(input => {
+        if (input.value) {
+            // Se não tem data-raw-value, calcula do valor atual
+            if (!input.hasAttribute('data-raw-value')) {
+                const num = moedaParaFloat(input.value);
+                input.setAttribute('data-raw-value', num.toString());
+                // Formata para exibição
+                input.value = formatarParaExibicao(num);
+            }
+        }
+    });
+    
+    // Monitorar mudanças nas finalidades para verificar condições DEC
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('finalidade-nd-input')) {
+            verificarCondicoesDEC();
+        }
+    });
+
+    // Monitorar campos FSTVE e DIEx DOM
+    const temFsvSelect = document.getElementById('tem_fsv');
+    const diexDomInput = document.getElementById('diex_dom');
+    const nrOpusInput = document.getElementById('nr_opus');
+    
+    if (temFsvSelect) {
+        temFsvSelect.addEventListener('change', function() {
+            if (this.value === 'sim') {
+                diexDomInput.disabled = false;
+                diexDomInput.required = true;
+                if (nrOpusInput) {
+                    nrOpusInput.required = true;
+                }
+            } else {
+                diexDomInput.disabled = true;
+                diexDomInput.required = false;
+                diexDomInput.value = '';
+                if (nrOpusInput) {
+                    nrOpusInput.required = false;
+                }
+            }
+            verificarCondicoesDEC();
+        });
+    }
+
+    const modalidadeSelect = document.getElementById('modalidade');
+    if (modalidadeSelect) {
+        modalidadeSelect.addEventListener('change', alternarDestinatarioColog);
+        alternarDestinatarioColog();
+    }
+    
+    if (diexDomInput) {
+        diexDomInput.addEventListener('input', verificarCondicoesDEC);
+    }
+    if (nrOpusInput) {
+        nrOpusInput.addEventListener('input', verificarCondicoesDEC);
+    }
+
+    // CORREÇÃO FINAL: Processamento antes do envio
+    document.getElementById('formEditarSolicitacao').addEventListener('submit', function(e) {
+        console.log('=== PROCESSANDO ANTES DO ENVIO ===');
+        
+        // Verificar condições PASA-DEC e Mnt OP-DEC
+        const condicoesAtendidas = verificarCondicoesDEC();
+        if (!condicoesAtendidas) {
+            e.preventDefault();
+            alert('ERRO: Para finalidades PASA-DEC ou Mnt OP-DEC, é necessário preencher as informações específicas (FSTVE, DIEx DOM e Nr OPUS quando aplicável) antes de salvar!');
+            return;
+        }
+        
+        // Processar todos os campos de valores
+        const valoresSolicitados = document.querySelectorAll('.valor-solicitado-input');
+        const valoresAprovados = document.querySelectorAll('.valor-aprovado-input');
+        
+        console.log('📊 Usando valores RAW...');
+        
+        // Usar APENAS o data-raw-value para envio
+        valoresSolicitados.forEach((input, index) => {
+            const rawValue = input.getAttribute('data-raw-value') || '0';
+            const num = moedaParaFloat(rawValue);
+            console.log(`Solicitado ${index + 1}: raw="${rawValue}" → ${num}`);
+            
+            // Enviar o número puro
+            input.value = num.toString();
+        });
+        
+        valoresAprovados.forEach((input, index) => {
+            const rawValue = input.getAttribute('data-raw-value') || '0';
+            const num = moedaParaFloat(rawValue);
+            console.log(`Aprovado ${index + 1}: raw="${rawValue}" → ${num}`);
+            
+            input.value = num.toString();
+        });
+        
+        // Verificar todos os campos
+        let totalNds = 0;
+        const nds = document.querySelectorAll('.nd-select');
+        const finalidades = document.querySelectorAll('.finalidade-nd-input');
+        
+        console.log(`📊 Total de NDs: ${nds.length}`);
+        
+        nds.forEach((nd, index) => {
+            console.log(`ND ${index + 1}: ${nd.value} | Finalidade: ${finalidades[index]?.value}`);
+            totalNds++;
+            
+            if (!finalidades[index].value || !finalidades[index].value.trim()) {
+                alert('ERRO: Todas as finalidades devem ser preenchidas! Verifique o ND ' + (index + 1));
+                e.preventDefault();
+                return;
+            }
+        });
+
+        if (totalNds === 0) {
+            alert('ERRO: Nenhum ND foi preenchido!');
+            e.preventDefault();
+            return;
+        }
+        
+        console.log('✅ Dados prontos para envio');
+        
+        // Mostrar loading
+        const btnSalvar = document.getElementById('btnSalvar');
+        btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        btnSalvar.disabled = true;
+    });
+
+    // Verificar condições ao carregar a página
+    verificarCondicoesDEC();
+});
+
+// Função para confirmar exclusão
+function confirmarExclusao(solicitacaoId) {
+    if (confirm('Tem certeza que deseja excluir esta solicitação? Esta ação não pode ser desfeita.')) {
+        document.getElementById('formExcluirSolicitacao').submit();
+    }
+}
+</script>
+
+<style>
+.status-aguardando-análise { background-color: #f39c12; color: white; }
+.status-em-análise { background-color: #3498db; color: white; }
+.status-aprovado-cmt-log { background-color: #27ae60; color: white; }
+.status-aprovado-parcialmente { background-color: #2ecc71; color: white; }
+.status-negado-cmt-log { background-color: #e74c3c; color: white; }
+.status-arquivado { background-color: #95a5a6; color: white; }
+.status-aguardando-despacho { background-color: #9b59b6; color: white; }
+.status-devolvido-para-correções { background-color: #e67e22; color: white; }
+
+.pedido-item {
+    border: 1px solid #dee2e6;
+    border-radius: 0.35rem;
+}
+
+.nd-item {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 0.25rem;
+    margin-bottom: 10px;
+    border: 1px solid #e9ecef;
+}
+
+.alert-warning {
+    border-left: 4px solid #f39c12;
+}
+
+.alert-info {
+    border-left: 4px solid #17a2b8;
+}
+
+.form-control[readonly] {
+    background-color: #f8f9fa !important;
+    cursor: not-allowed;
+}
+
+.form-control:disabled {
+    background-color: #e9ecef !important;
+    cursor: not-allowed;
+}
+
+.pi-info {
+    display: block;
+    margin-top: 5px;
+    font-weight: 500;
+}
+
+/* Melhorias responsivas */
+@media (max-width: 768px) {
+    .nd-item .row > div {
+        margin-bottom: 10px;
+    }
+    
+    .btn {
+        margin-bottom: 5px;
+    }
+}
+</style>
+{% endblock %}

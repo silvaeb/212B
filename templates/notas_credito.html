@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Notas de Crédito - Sistema Extra PDRLOG{% endblock %}
+{% block page_title %}Notas de Crédito{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+            </div>
+            <div class="card-body">
+                <form method="GET">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="status">Status:</label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="">Todos os Status</option>
+                                    {% for status in status_list %}
+                                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="diex">Número:</label>
+                                <input type="text" class="form-control" id="diex" name="diex" 
+                                       value="{{ diex_filter }}" placeholder="Número">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="orgao">Órgão Demandante:</label>
+                                <input type="text" class="form-control" id="orgao" name="orgao" 
+                                       value="{{ orgao_filter }}" placeholder="Órgão demandante">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="pi">PI:</label>
+                                <input type="text" class="form-control" id="pi" name="pi" 
+                                       value="{{ pi_filter }}" placeholder="Código PI" list="pi-options">
+                                <datalist id="pi-options">
+                                    {% for pi in pis_disponiveis %}
+                                    <option value="{{ pi }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="sigla_ug">SIGLA UG:</label>
+                                <input type="text" class="form-control" id="sigla_ug" name="sigla_ug" value="{{ sigla_ug_filter }}" placeholder="SIGLA UG">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="om">OM:</label>
+                                <input type="text" class="form-control" id="om" name="om" value="{{ om_filter }}" placeholder="OM" list="om-options">
+                                <datalist id="om-options">
+                                    {% for om in DADOS_PLANILHA['OMs'] %}
+                                    <option value="{{ om.OM }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="nd">ND:</label>
+                                <input type="text" class="form-control" id="nd" name="nd" 
+                                       value="{{ nd_filter }}" placeholder="Código ND">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="ref_sisnc">REF SISNC:</label>
+                                <input type="text" class="form-control" id="ref_sisnc" name="ref_sisnc" value="{{ ref_sisnc_filter }}" placeholder="REF SISNC">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="nc_siafi">NC SIAFI:</label>
+                                <input type="text" class="form-control" id="nc_siafi" name="nc_siafi" value="{{ nc_siafi_filter }}" placeholder="NC SIAFI">
+                            </div>
+                        </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="cod_ug">COD UG:</label>
+                                    <input type="text" class="form-control" id="cod_ug" name="cod_ug" value="{{ cod_ug_filter }}" placeholder="COD UG">
+                                </div>
+                            </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary mr-2">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <a href="{{ url_for('listar_ncs') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Limpar
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary">Lista de Notas de Crédito</h6>
+                <div>
+                    <span class="badge bg-success mr-2">
+                        Total: {{ ncs|length }}
+                    </span>
+                    <span class="badge bg-warning">
+                        Pendentes: {{ ncs|selectattr('status', 'equalto', 'Pendente')|list|length }}
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Nº NC</th>
+                                <th>Data</th>
+                                <th>Número</th>
+                                <th>Órgão Demandante</th>
+                                <th>COD UG</th>
+                                <th>SIGLA UG</th>
+                                <th>PI</th>
+                                <th>Descrição</th>
+                                <th>ND</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                                <th>REF SISNC</th>
+                                <th>NC SIAFI</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for nc in ncs %}
+                            <tr>
+                                <td><strong>{{ nc.numero }}</strong></td>
+                                <td>{{ nc.data_criacao.strftime('%d/%m/%Y') if nc.data_criacao else '--' }}</td>
+                                <td>
+                                    {% if nc.solicitacao_origem %}
+                                        {{ nc.solicitacao_origem.diex or '--' }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if nc.solicitacao_origem %}
+                                        {{ nc.solicitacao_origem.orgao_demandante or '--' }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>{{ nc.cod_ug or '--' }}</td>
+                                <td>{{ nc.sigla_ug or '--' }}</td>
+                                <td>{{ nc.pi or '--' }}</td>
+                                <td style="max-width: 300px; white-space: pre-line;">
+                                    {% if nc.solicitacao_origem and nc.solicitacao_origem.descricao %}
+                                        {{ nc.solicitacao_origem.descricao|truncate(120, True, '...') }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>{{ nc.nd or '--' }}</td>
+                                <td>
+                                    {% if nc.valor and nc.valor > 0 %}
+                                        {{ nc.valor|format_currency }}
+                                    {% else %}
+                                        --
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <!-- CORREÇÃO: Status com cores corretas -->
+                                    <span class="badge {% if nc.status == 'Não Conferida' %}bg-warning text-dark
+                                     {% elif nc.status == 'Pendente' %}bg-primary text-white
+                                     {% elif nc.status == 'Cadastrada SISNC' %}bg-info text-white
+                                     {% elif nc.status == 'Processada SIAFI' %}bg-success text-white
+                                     {% elif nc.status == 'Cancelada' %}bg-danger text-white
+                                     {% else %}bg-light text-dark{% endif %}">
+                                        {{ nc.status }}
+                                    </span>
+                                </td>
+                                <!-- CORREÇÃO: Coluna REF SISNC -->
+                                <td>
+                                    {% if nc.ref_sisnc %}
+                                        <span class="badge bg-info text-white">{{ nc.ref_sisnc }}</span>
+                                    {% else %}
+                                        <span class="text-muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <!-- CORREÇÃO: Coluna NC SIAFI -->
+                                <td>
+                                    {% if nc.nc_siafi %}
+                                        <span class="badge bg-success text-white">{{ nc.nc_siafi }}</span>
+                                    {% else %}
+                                        <span class="text-muted">--</span>
+                                    {% endif %}
+                                </td>
+                                <!-- CORREÇÃO: Coluna Ações -->
+                                <td>
+                                    <a href="{{ url_for('detalhes_nc', id=nc.id) }}" class="btn btn-sm btn-info" title="Ver detalhes">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if nc.status == 'Cancelada' %}
+                                    <a href="{{ url_for('detalhes_nc', id=nc.id) }}" class="btn btn-sm btn-warning" title="Reativar NC">
+                                        <i class="fas fa-undo"></i>
+                                    </a>
+                                    {% endif %}
+                                    <form method="POST" action="{{ url_for('excluir_nc', id=nc.id) }}" class="d-inline" onsubmit="return confirm('Excluir definitivamente esta NC?');">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Excluir NC">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="13" class="text-center">Nenhuma Nota de Crédito encontrada</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if current_user.nivel_acesso == 'admin' %}
+<div class="mb-3">
+    <form method="post" action="{{ url_for('atualizar_status_ncs') }}" onsubmit="return confirm('Deseja realmente atualizar o status de todas as NCs preenchidas automaticamente?');">
+        <button type="submit" class="btn btn-warning">
+            <i class="fas fa-sync-alt"></i> Atualizar Status das NCs Preenchidas Automaticamente
+        </button>
+    </form>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block styles %}
+<style>
+.table th {
+    font-weight: 600;
+    font-size: 0.85em;
+    background-color: #f8f9fa;
+}
+
+.table td {
+    font-size: 0.9em;
+    vertical-align: middle;
+}
+
+.badge {
+    font-weight: 500;
+    font-size: 0.8em;
+    padding: 0.4em 0.6em;
+}
+
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.font-weight-bold {
+    font-weight: 600 !important;
+}
+
+/* Melhorar a aparência da tabela */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.075);
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8em;
+    }
+    
+    .badge {
+        font-size: 0.7em;
+        padding: 0.3em 0.5em;
+    }
+    
+    .btn-sm {
+        padding: 0.2rem 0.4rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Estilos para os status - MESMO PADRÃO DAS SOLICITAÇÕES */
+.bg-warning {
+    background-color: #ffc107 !important;
+}
+
+.bg-info {
+    background-color: #17a2b8 !important;
+}
+
+.bg-primary {
+    background-color: #007bff !important;
+}
+
+.bg-success {
+    background-color: #28a745 !important;
+}
+
+.bg-danger {
+    background-color: #dc3545 !important;
+}
+
+.bg-secondary {
+    background-color: #6c757d !important;
+}
+
+.bg-light {
+    background-color: #f8f9fa !important;
+}
+
+.text-dark {
+    color: #212529 !important;
+}
+
+.text-white {
+    color: #fff !important;
+}
+
+/* Badges de contagem no header */
+.badge.bg-success {
+    background-color: #28a745 !important;
+    color: white !important;
+}
+
+.badge.bg-warning {
+    background-color: #ffc107 !important;
+    color: black !important;
+}
+
+/* ... outros estilos ... */
+.bg-purple {
+    background-color: #9b59b6 !important;
+    color: white !important;
+}
+</style>
+{% endblock %}
